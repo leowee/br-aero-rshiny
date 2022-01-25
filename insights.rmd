@@ -13,7 +13,7 @@ knitr::opts_chunk$set(cache = TRUE)
 
 # Pacotes
 library(data.table) # Framework de manipulação dos dados
-library(magrittr) # Apenas para usar algumas funções no console mais rápidas
+library(echarts4r) # Framework de visualização de séries temporais
 ```
 
 # Introdução
@@ -50,7 +50,7 @@ Segue uma breve descrição do que está no site:
 
 ---
 
-# Programa
+# Importação e Tratamentos Iniciais dos Dados
 
 ## Importação dos Dados
 
@@ -141,54 +141,55 @@ Isso não mudará muita coisa no nosso cruzamento, mas isso significa que podemo
 
 Voltando ao que interessa, vamos para o cruzamento - fazendo 4 left joins seguidos:
 
-> cruzamento1 <- ocorrencia[ocorrencia_tipo, on = "codigo_ocorrencia1"] # Left Join 1
+```{r}
+cruzamento1 <- ocorrencia[ocorrencia_tipo, on = "codigo_ocorrencia1"] # Left Join 1
 cruzamento2 <- cruzamento1[aeronave, on = "codigo_ocorrencia2"] # Left Join 2
 cruzamento3 <- cruzamento2[fator_contribuinte, on = "codigo_ocorrencia3"] # Left Join 3
-tabela <- cruzamento3[recomendacao, on = "codigo_ocorrencia4"] # Left Join 4
+# tabela <- cruzamento3[recomendacao, on = "codigo_ocorrencia4"] # Left Join 4
+```
 
-Rodando o código acima, obteremos um erro vindo do último cruzamento, um left join entre *ocorrencia* e *recomendacao*:
+Rodando o código acima sem a última linha estar comentada, obteremos um erro vindo do último cruzamento, um left join entre *ocorrencia* e *recomendacao*:
 
 > Error in vecseq(f__, len__, if (allow.cartesian || notjoin || !anyDuplicated(f__, : 
 Join results in 11387 rows; more than 6687 = nrow(x)+nrow(i). Check for duplicate key values in i each of which join to the same group in x over and over again. If that's ok, try by=.EACHI to run j for each group to avoid the large allocation. If you are sure you wish to proceed, rerun with allow.cartesian=TRUE. Otherwise, please search for this error message in the FAQ, Wiki, Stack Overflow and data.table issue tracker for advice.
 
-Aparentemente as chaves de alguma das duas tabelas não são únicas. Como a tabela central, *ocorrencia*, cruzou com as outras 3 tabelas, vamos dar uma olhadinha na tabela *recomendacao*:
+Aparentemente as chaves de alguma das duas tabelas não são únicas. Vamos dar uma olhadinha na frequências das chaves (código de ocorrência - *codigo_ocorrencia*) das tabelas:
 
-```{r Panorama geral da tabela recomendacao}
-str(recomendacao)
-```
-Opa! Podemos ver que *codigo_ocorrencia4* de fato ocorre duas vezes! Mas por quê? Vamos dar uma analisada mais afundo na base e ver se podemos entendê-la melhor. Também darei uma olhada se há um metadados dessa tabela lá no site - possibilitando o nosso melhor entendimento do que de fato seja uma recomendação.
-
-Bom, não existeu metadados. Vamos na marra então!
-
-Como a chave *codigo_ocorrencia4* repete duas vezes, vamos pegar o primeiro elemento da coluna como exemplo e ver como ela se comporta.
-
-```{r Exemplo da tabela recomendacao 1}
-recomendacao[codigo_ocorrencia4 == 39115]
+```{r}
+head(ocorrencia[, .(n = .N), by = codigo_ocorrencia][n > 1][order(-n)])
 ```
 
-```{r Exemplo da tabela recomendacao 2, echo=FALSE}
-recomendacao[codigo_ocorrencia4 == 39115, recomendacao_conteudo]
-```
-Hmm... Aparentemente existem **múltiplas recomendações para uma mesma ocorrência**. Faz sentido o nosso left join não ter funcionado plenamente. No entanto, isso é facilmente consertado trocando o join de **left join** para **right join** dado que sabemos que os valores da coluna *codigo_ocorrencia4* existem apenas uma única vez na Tabela Central, *ocorrencias*.
-
-Vamos tentar fazer o código novamente trocando o último cruzamento de left join para right join, e ver se dará certo.
-
-> cruzamento1 <- ocorrencia[ocorrencia_tipo, on = "codigo_ocorrencia1"] # Left Join 1
-cruzamento2 <- cruzamento1[aeronave, on = "codigo_ocorrencia2"] # Left Join 2
-cruzamento3 <- cruzamento2[fator_contribuinte, on = "codigo_ocorrencia3"] # Left Join 3
-tabela <- cruzamento3[recomendacao, on = "codigo_ocorrencia4"] # Left Join 4 - dá erro por chave deixar de ser única
-
-E deu erro de novo! Terei que morder minha língua aqui. Analisando um pouco melhor, após cada cruzamento, ele está duplicando algumas chaves - tornando bem difícil fazer um *left join* ou um *right join* convencional.
-
-Vamos adentrar por outro caminho. Sabemos que a tabela de recomendações possui apenas informações complementares e que não há problema (no nosso caso) de repetir as informações para cada código de ocorrência. Portanto, ao invés de fazer um *left join* como os outros, vamos partir para um *cartesian join* - já que apenas precisamos trazer essa informação para código de ocorrência, não importando se irá repetir ou não.
-
-```{r Cruzando as tabelas finalmente}
-cruzamento1 <- ocorrencia[ocorrencia_tipo, on = "codigo_ocorrencia1"] # Left Join 1
-cruzamento2 <- cruzamento1[aeronave, on = "codigo_ocorrencia2"] # Left Join 2
-cruzamento3 <- cruzamento2[fator_contribuinte, on = "codigo_ocorrencia3"] # Left Join 3
-tabela <- cruzamento3[recomendacao, on = "codigo_ocorrencia4", allow.cartesian = TRUE] # Cartesian Join 1
-
-head(tabela)
+```{r}
+head(ocorrencia_tipo[, .(n = .N), by = codigo_ocorrencia1][n > 1][order(-n)])
 ```
 
-E deu certo! *Wheeew.* Agora que finalmente temos uma base com todos os dados agregados, podemos brincar um pouco com ela! :)
+```{r}
+head(aeronave[, .(n = .N), by = codigo_ocorrencia2][n > 1][order(-n)])
+```
+
+```{r}
+head(fator_contribuinte[, .(n = .N), by = codigo_ocorrencia3][n > 1][order(-n)])
+```
+
+```{r}
+head(recomendacao[, .(n = .N), by = codigo_ocorrencia4][n > 1][order(-n)])
+```
+
+Bom, dado que não há uma chave comum entre as tabelas que não estejam duplicadas, não é possível fazer um join direto entre elas. No entanto, como nossas tabelas não possuem nenhum campo de valor que poderíamos agregar (exceto 3 colunas que contém o nome "total", mas que podem ser recalculadas usando as variáveis de origem), nós conseguimos fazer algo ainda que nos ajude a colocar tudo numa tabela só, usando cruzamento cartesiano (*cartesian join*).
+
+Então, para fazer o cruzamento cartesiano no data.table basta especificar o argumento no final. Vamos ver se agora dará certo...
+
+```{r}
+cruzamento1 <- ocorrencia_tipo[ocorrencia, on = "codigo_ocorrencia1", allow.cartesian = TRUE] # Left Join 1
+cruzamento2 <- aeronave[cruzamento1, on = "codigo_ocorrencia2", allow.cartesian = TRUE] # Left Join 2
+cruzamento3 <- fator_contribuinte[cruzamento2, on = "codigo_ocorrencia3", allow.cartesian = TRUE] # Left Join 3
+tabela <- recomendacao[cruzamento3, on = "codigo_ocorrencia4", allow.cartesian = TRUE] # Left Join 4
+```
+
+E sucesso! *Wheeeew.* Agora que temos uma tabela com todas as informações que precisamos, podemos criar algumas visões para tirar alguns insights ou análises interessantes sobre :)
+
+# Análises
+
+## Número de Ocorrências
+
+
