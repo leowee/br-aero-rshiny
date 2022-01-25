@@ -1,5 +1,5 @@
 ---
-title: "Insights - Base de Dados da Aeronaútica"
+title: "Insights - Tabela de Dados da Aeronaútica"
 author: "Gabriel Marreiros"
 date: "`r Sys.Date()`"
 output:
@@ -10,6 +10,10 @@ output:
 ```{r rmarkdown_setup, include=FALSE}
 ## Global options
 knitr::opts_chunk$set(cache = TRUE)
+
+# Pacotes
+library(data.table) # Framework de manipulação dos dados
+library(magrittr) # Apenas para usar algumas funções no console mais rápidas
 ```
 
 # Introdução
@@ -29,42 +33,38 @@ Segue uma breve descrição do que está no site:
 
 ## Importação dos Dados
 
-Bom, iniciamos o programa importando as informações do portal da CENIPA encontrados no link mencionados na Introdução.
+Bom, iniciamos o programa importando as informações do portal da CENIPA (Centro de Investigação e Prevenção de Acidentes Aeronáuticos) encontrados no link mencionados na Introdução.
 
 Note que se importarmos o programa sem especificar o encoding como "UTF-8", então caracteres especiais do Português Brasil serão lidos incorretamente. e.g. "ã", "é", "Ç", etc.
 
-<!-- Importa bases do portal de dados abertos do Governo Federal -->
+<!-- Importa tabelas do portal de dados abertos do Governo Federal -->
 <!-- https://dados.gov.br/dataset/ocorrencias-aeronauticas-da-aviacao-civil-brasileira -->
 ```{r Importando dados da CENIPA}
-library(data.table) # Framework de manipulação dos dados
-library(magrittr) # Apenas para usar algumas funções no console mais rápidas
-
-# Importa bases do portal de dados abertos do Governo Federal
-# https://dados.gov.br/dataset/ocorrencias-aeronauticas-da-aviacao-civil-brasileira
+# Tabela principal - Ocorrência
 ocorrencia <- data.table::fread(
   "http://sistema.cenipa.aer.mil.br/cenipa/media/opendata/ocorrencia.csv",
   encoding = "UTF-8"
 )
 
-# Código de Ocorrência 1
+# Tabela Complementar 1 - Código de Ocorrência 1
 ocorrencia_tipo <- data.table::fread(
   "http://sistema.cenipa.aer.mil.br/cenipa/media/opendata/ocorrencia_tipo.csv",
   encoding = "UTF-8"
 )
 
-# Código de Ocorrência 2
+# Tabela Complementar 2 - Código de Ocorrência 2
 aeronave <- data.table::fread(
   "http://sistema.cenipa.aer.mil.br/cenipa/media/opendata/aeronave.csv",
   encoding = "UTF-8"
 )
 
-# Código de Ocorrência 3
+# Tabela Complementar 3 - Código de Ocorrência 3
 fator_contribuinte <- data.table::fread(
   "http://sistema.cenipa.aer.mil.br/cenipa/media/opendata/fator_contribuinte.csv",
   encoding = "UTF-8"
 )
 
-# Código de Ocorrência 4
+# Tabela Complementar 4 - Código de Ocorrência 4
 recomendacao <- data.table::fread(
   "http://sistema.cenipa.aer.mil.br/cenipa/media/opendata/recomendacao.csv",
   encoding = "UTF-8"
@@ -92,3 +92,54 @@ reactable::reactable(data.table::data.table(nome_tabelas_complementares, chave_t
 
 ### Cruzamento
 
+Primeira coisa, vamos dar um head para ter um panorama geral da tabela principal, *ocorrencia* - especialmente das chaves. Nunca se sabe se algo deu errado.
+
+```{r Head da chave da base Ocorrencia antes do cruzamento}
+head(ocorrencia[, c("codigo_ocorrencia", "codigo_ocorrencia1", "codigo_ocorrencia2", "codigo_ocorrencia3", "codigo_ocorrencia4")])
+```
+
+Opa! Olhando o header, parece que ocorreu algo de muito estranho. As 5 primeiras linhas das 5 chaves possuem o valor idêntico!
+
+Note que isso não significa que todas as linhas serão iguais. Porém, há uma leve suspeita para sabermos se isso é muito mais que uma mera coincidência.
+
+Para checarmos no R se as colunas possuem valores, iguais podemos usar a função *identical* para saber se os elementos são iguais.
+
+```{r Checagem 1 - Colunas das chaves são idênticas}
+identical(
+  ocorrencia[, codigo_ocorrencia], 
+  ocorrencia[, codigo_ocorrencia1], 
+  ocorrencia[, codigo_ocorrencia2],
+  ocorrencia[, codigo_ocorrencia3],
+  ocorrencia[, codigo_ocorrencia4]
+)
+```
+
+E olha só! As colunas são de fato idênticas! Pode ser que um dia essas colunas sejam diferentes por algum motivo, mas no momento de nossa análise elas são idênticas.
+
+Isso não mudará muita coisa no nosso cruzamento, mas isso significa que podemos descartar alguns dados mais para frente, pós o cruzamento.
+
+Voltando ao que interessa, vamos para o cruzamento - fazendo 4 left joins seguidos:
+
+> cruzamento1 <- ocorrencia[ocorrencia_tipo, on = "codigo_ocorrencia1"]
+cruzamento2 <- cruzamento1[aeronave, on = "codigo_ocorrencia2"]
+cruzamento3 <- cruzamento2[fator_contribuinte, on = "codigo_ocorrencia3"]
+tabela <- cruzamento3[recomendacao, on = "codigo_ocorrencia4"]
+
+Rodando o código acima, obteremos um erro vindo do último cruzamento, um left join entre *ocorrencia* e *recomendacao*:
+
+> Error in vecseq(f__, len__, if (allow.cartesian || notjoin || !anyDuplicated(f__, : 
+Join results in 11387 rows; more than 6687 = nrow(x)+nrow(i). Check for duplicate key values in i each of which join to the same group in x over and over again. If that's ok, try by=.EACHI to run j for each group to avoid the large allocation. If you are sure you wish to proceed, rerun with allow.cartesian=TRUE. Otherwise, please search for this error message in the FAQ, Wiki, Stack Overflow and data.table issue tracker for advice.
+
+Aparentemente as chaves de alguma das duas tabelas não são únicas. Como a tabela principal, *ocorrencia*, cruzou com as outras 3 tabelas, vamos dar uma olhadinha na tabela *recomendacao*:
+
+```{r}
+str(recomendacao)
+```
+Opa! Podemos ver que *codigo_ocorrencia4* de fato ocorre duas vezes! Mas por quê? Vamos dar uma analisada mais afundo na base e ver se podemos entendê-la melhor. Também darei uma olhada se há um metadados dessa tabela lá no site - possibilitando o nosso melhor entendimento do que de fato seja uma recomendação.
+
+```{r Cruzando as tabelas, include=FALSE}
+cruzamento1 <- ocorrencia[ocorrencia_tipo, on = "codigo_ocorrencia1"]
+cruzamento2 <- cruzamento1[aeronave, on = "codigo_ocorrencia2"]
+cruzamento3 <- cruzamento2[fator_contribuinte, on = "codigo_ocorrencia3"]
+#tabela <- cruzamento3[recomendacao, on = "codigo_ocorrencia4"]
+```
