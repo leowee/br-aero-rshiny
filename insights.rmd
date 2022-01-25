@@ -12,9 +12,32 @@ output:
 knitr::opts_chunk$set(cache = TRUE)
 ```
 
-```{r import, include=FALSE}
-library(data.table)
-library(magrittr)
+# Introdução
+
+A ideia desse documento é pegar um dataset com qual não tenho familiaridade e tentar extrair algum tipo de *insight* ou algum fato interessante usando R, usando especialmente data.table, Rmarkdown para compilar um documento de como fui me mergulhando nos dados junto com alguns htmlwidgets no caminho, e possivelmente criar um demo de um aplicativo shiny no final.
+
+Nesse caso, escolhi um dataset que me interessou sobre **Ocorrências Aeronáuticas na Aviação Civil Brasileira**. Imagino que terá como mexer um pouco com mapas usando Leatlet ou alguma outra direção que quisermos tomar. 
+
+Esses datasets são extraídos da CENIPA e estão disponíveis no [site de dados abertos do Governo Federal](https://dados.gov.br/dataset/ocorrencias-aeronauticas-da-aviacao-civil-brasileira).
+
+Segue uma breve descrição do que está no site: 
+> A base de dados de ocorrências aeronáuticas é gerenciada pelo Centro de Investigação e Prevenção de Acidentes Aeronáuticos (CENIPA). Constam nesta base de dados as ocorrências aeronáuticas notificadas ao CENIPA nos últimos 10 anos e que ocorreram em solo brasileiro.
+
+> Dentre as informações disponíveis estão os dados sobre as aeronaves envolvidas, fatalidades, local, data, horário dos eventos e informações taxonômicas típicas das investigações de acidentes (AIG). São resguardadas a privacidade de pessoas físicas/jurídicas envolvidas conforme previsto pela Lei de Acesso à Informação (Lei n° 12.527, de 18 de novembro de 2011). 
+
+# Programa
+
+## Importação dos Dados
+
+Bom, iniciamos o programa importando as informações do portal da CENIPA encontrados no link mencionados na Introdução.
+
+Note que se importarmos o programa sem especificar o encoding como "UTF-8", então caracteres especiais do Português Brasil serão lidos incorretamente. e.g. "ã", "é", "Ç", etc.
+
+<!-- Importa bases do portal de dados abertos do Governo Federal -->
+<!-- https://dados.gov.br/dataset/ocorrencias-aeronauticas-da-aviacao-civil-brasileira -->
+```{r Importando dados da CENIPA}
+library(data.table) # Framework de manipulação dos dados
+library(magrittr) # Apenas para usar algumas funções no console mais rápidas
 
 # Importa bases do portal de dados abertos do Governo Federal
 # https://dados.gov.br/dataset/ocorrencias-aeronauticas-da-aviacao-civil-brasileira
@@ -23,31 +46,49 @@ ocorrencia <- data.table::fread(
   encoding = "UTF-8"
 )
 
+# Código de Ocorrência 1
 ocorrencia_tipo <- data.table::fread(
   "http://sistema.cenipa.aer.mil.br/cenipa/media/opendata/ocorrencia_tipo.csv",
   encoding = "UTF-8"
 )
 
+# Código de Ocorrência 2
 aeronave <- data.table::fread(
   "http://sistema.cenipa.aer.mil.br/cenipa/media/opendata/aeronave.csv",
   encoding = "UTF-8"
 )
 
+# Código de Ocorrência 3
 fator_contribuinte <- data.table::fread(
   "http://sistema.cenipa.aer.mil.br/cenipa/media/opendata/fator_contribuinte.csv",
   encoding = "UTF-8"
 )
 
+# Código de Ocorrência 4
 recomendacao <- data.table::fread(
   "http://sistema.cenipa.aer.mil.br/cenipa/media/opendata/recomendacao.csv",
   encoding = "UTF-8"
 )
 ```
 
-# XXX
 
+## Cruzamento dos Dados
 
+### Explicação
 
-```{r}
-reactable::reactable(fator_contribuinte)
+Normalmente, essa seria um bom momento de dar uma olhada em algumas colunas e vermos o que podemos fazer com elas. No entanto, lendo as informações no site de dados do Governo Federal, notamos que apesar de termos 5 tabelas diferentes, há uma tabela central que possui informações adicionais distribuídas nas outras 4, assim como na imagem a seguir:
+
+![Relacionamento de dados das tabelas que usaremos](http://sistema.cenipa.aer.mil.br/cenipa/media/opendata/modelo_dados.png "Deve ser simples, certo?")
+Como as tabelas são bem pequenas com menos 10 mil linhas e 30 colunas, cruzá-las e trazer todas as informações em um único dataset poderá facilitar o tratamento de dados mais para frente. Talvez fique um pouco mais difícil de ter uma panorama geral só batendo o olho, mas dado o número colunas parece ser algo tolerável.
+
+Como estou usando o pacote data.table, vamos utilizá-lo para cruzar as informações baseado na chave seguindo a imagem do relacionamento de dados das tabelas acima. Extraindo as informações, seria algum assim:
+
+```{r Criando tabela de exemplo 1, echo=FALSE}
+nome_tabelas_complementares = list("OCORRENCIA_TIPO", "AERONAVE", "FATOR_CONTRIBUINTE", "RECOMENDACAO")
+chave_tabelas_complementares = list("codigo_ocorrencia1", "codigo_ocorrencia2", "codigo_ocorrencia3", "codigo_ocorrencia4")
+
+reactable::reactable(data.table::data.table(nome_tabelas_complementares, chave_tabelas_complementares))
 ```
+
+### Cruzamento
+
