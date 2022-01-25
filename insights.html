@@ -231,20 +231,93 @@
 <p>A ideia desse documento é pegar um dataset com qual não tenho familiaridade e tentar extrair algum tipo de <em>insight</em> ou algum fato interessante usando R, usando especialmente data.table, Rmarkdown para compilar um documento de como fui me mergulhando nos dados junto com alguns htmlwidgets no caminho, e possivelmente criar um demo de um aplicativo shiny no final.</p>
 <p>Nesse caso, escolhi um dataset que me interessou sobre <strong>Ocorrências Aeronáuticas na Aviação Civil Brasileira</strong>. Imagino que terá como mexer um pouco com mapas usando Leatlet ou alguma outra direção que quisermos tomar.</p>
 <p>Esses datasets são extraídos da CENIPA e estão disponíveis no <a href="https://dados.gov.br/dataset/ocorrencias-aeronauticas-da-aviacao-civil-brasileira">site de dados abertos do Governo Federal</a>.</p>
-<p>Segue uma breve descrição do que está no site: &gt; A base de dados de ocorrências aeronáuticas é gerenciada pelo Centro de Investigação e Prevenção de Acidentes Aeronáuticos (CENIPA). Constam nesta base de dados as ocorrências aeronáuticas notificadas ao CENIPA nos últimos 10 anos e que ocorreram em solo brasileiro.</p>
+<p>Segue uma breve descrição do que está no site:</p>
+<blockquote>
+<p>A base de dados de ocorrências aeronáuticas é gerenciada pelo Centro de Investigação e Prevenção de Acidentes Aeronáuticos (CENIPA). Constam nesta base de dados as ocorrências aeronáuticas notificadas ao CENIPA nos últimos 10 anos e que ocorreram em solo brasileiro.</p>
+</blockquote>
 <blockquote>
 <p>Dentre as informações disponíveis estão os dados sobre as aeronaves envolvidas, fatalidades, local, data, horário dos eventos e informações taxonômicas típicas das investigações de acidentes (AIG). São resguardadas a privacidade de pessoas físicas/jurídicas envolvidas conforme previsto pela Lei de Acesso à Informação (Lei n° 12.527, de 18 de novembro de 2011).</p>
 </blockquote>
+<ul>
+<li>Informações dos dados utilizados nesse relatório:</li>
+</ul>
+<table>
+<colgroup>
+<col width="16%" />
+<col width="83%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th><strong>Campo</strong></th>
+<th><strong>Valor</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Fonte</td>
+<td><a href="http://www.fab.mil.br/cenipa/" class="uri">http://www.fab.mil.br/cenipa/</a></td>
+</tr>
+<tr class="even">
+<td>Autor</td>
+<td>Centro de Investigação e Prevenção de Acidentes Aeronáuticos</td>
+</tr>
+<tr class="odd">
+<td>Mantenedor</td>
+<td>Centro de Investigação e Prevenção de Acidentes Aeronáuticos</td>
+</tr>
+<tr class="even">
+<td>Versão</td>
+<td>1.3</td>
+</tr>
+<tr class="odd">
+<td>Última Atualização</td>
+<td>5 de Outubro de 2021, 19:19 (UTC-03:00)</td>
+</tr>
+<tr class="even">
+<td>Criado</td>
+<td>1 de Junho de 2015, 15:37 (UTC-03:00)</td>
+</tr>
+<tr class="odd">
+<td>Cobertura geográfica</td>
+<td>Brasil</td>
+</tr>
+<tr class="even">
+<td>Cobertura temporal</td>
+<td>2010 a 2019</td>
+</tr>
+<tr class="odd">
+<td>Fale Conosco</td>
+<td><a href="mailto:estatistica.cenipa@fab.mil.br" class="email">estatistica.cenipa@fab.mil.br</a></td>
+</tr>
+<tr class="even">
+<td>Frequência de atualização</td>
+<td>Anual</td>
+</tr>
+<tr class="odd">
+<td>Granularidade geográfica</td>
+<td>Aeródromo</td>
+</tr>
+<tr class="even">
+<td>Granularidade temporal</td>
+<td>Hora:Minuto</td>
+</tr>
+<tr class="odd">
+<td>VCGE</td>
+<td>Aeronáutica [<a href="http://vocab.e.gov.br/2011/03/vcge#aeronautica" class="uri">http://vocab.e.gov.br/2011/03/vcge#aeronautica</a>], Transporte Aéreo [<a href="http://vocab.e.gov.br/2011/03/vcge#transporte-aereo" class="uri">http://vocab.e.gov.br/2011/03/vcge#transporte-aereo</a>]</td>
+</tr>
+</tbody>
+</table>
+<hr />
 </div>
 <div id="programa" class="section level1">
 <h1>Programa</h1>
 <div id="importação-dos-dados" class="section level2">
 <h2>Importação dos Dados</h2>
-<p>Bom, iniciamos o programa importando as informações do portal da CENIPA encontrados no link mencionados na Introdução.</p>
+<p>Bom, iniciamos o programa importando as informações do portal da CENIPA (Centro de Investigação e Prevenção de Acidentes Aeronáuticos) encontrados no link mencionados na Introdução.</p>
 <p>Note que se importarmos o programa sem especificar o encoding como “UTF-8”, então caracteres especiais do Português Brasil serão lidos incorretamente. e.g. “ã”, “é”, “Ç”, etc.</p>
 <!-- Importa tabelas do portal de dados abertos do Governo Federal -->
 <!-- https://dados.gov.br/dataset/ocorrencias-aeronauticas-da-aviacao-civil-brasileira -->
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Tabela principal - Ocorrência</span></span>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Tabela Central - Ocorrência</span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>ocorrencia <span class="ot">&lt;-</span> data.table<span class="sc">::</span><span class="fu">fread</span>(</span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;http://sistema.cenipa.aer.mil.br/cenipa/media/opendata/ocorrencia.csv&quot;</span>,</span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">encoding =</span> <span class="st">&quot;UTF-8&quot;</span></span>
@@ -286,7 +359,7 @@
 </div>
 <div id="cruzamento" class="section level3">
 <h3>Cruzamento</h3>
-<p>Primeira coisa, vamos dar um head para ter um panorama geral da tabela principal, <em>ocorrencia</em> - especialmente das chaves. Nunca se sabe se algo deu errado.</p>
+<p>Primeira coisa, vamos dar um head para ter um panorama geral da tabela central, <em>ocorrencia</em> - especialmente das chaves. Nunca se sabe se algo deu errado.</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(ocorrencia[, <span class="fu">c</span>(<span class="st">&quot;codigo_ocorrencia&quot;</span>, <span class="st">&quot;codigo_ocorrencia1&quot;</span>, <span class="st">&quot;codigo_ocorrencia2&quot;</span>, <span class="st">&quot;codigo_ocorrencia3&quot;</span>, <span class="st">&quot;codigo_ocorrencia4&quot;</span>)])</span></code></pre></div>
 <pre><code>##    codigo_ocorrencia codigo_ocorrencia1 codigo_ocorrencia2 codigo_ocorrencia3
 ## 1:             40211              40211              40211              40211
@@ -317,49 +390,214 @@
 <p>Isso não mudará muita coisa no nosso cruzamento, mas isso significa que podemos descartar alguns dados mais para frente, pós o cruzamento.</p>
 <p>Voltando ao que interessa, vamos para o cruzamento - fazendo 4 left joins seguidos:</p>
 <blockquote>
-<p>cruzamento1 &lt;- ocorrencia[ocorrencia_tipo, on = “codigo_ocorrencia1”] cruzamento2 &lt;- cruzamento1[aeronave, on = “codigo_ocorrencia2”] cruzamento3 &lt;- cruzamento2[fator_contribuinte, on = “codigo_ocorrencia3”] tabela &lt;- cruzamento3[recomendacao, on = “codigo_ocorrencia4”]</p>
+<p>cruzamento1 &lt;- ocorrencia[ocorrencia_tipo, on = “codigo_ocorrencia1”] # Left Join 1 cruzamento2 &lt;- cruzamento1[aeronave, on = “codigo_ocorrencia2”] # Left Join 2 cruzamento3 &lt;- cruzamento2[fator_contribuinte, on = “codigo_ocorrencia3”] # Left Join 3 tabela &lt;- cruzamento3[recomendacao, on = “codigo_ocorrencia4”] # Left Join 4</p>
 </blockquote>
 <p>Rodando o código acima, obteremos um erro vindo do último cruzamento, um left join entre <em>ocorrencia</em> e <em>recomendacao</em>:</p>
 <blockquote>
 <p>Error in vecseq(f__, len<strong>, if (allow.cartesian || notjoin || !anyDuplicated(f</strong>, : Join results in 11387 rows; more than 6687 = nrow(x)+nrow(i). Check for duplicate key values in i each of which join to the same group in x over and over again. If that’s ok, try by=.EACHI to run j for each group to avoid the large allocation. If you are sure you wish to proceed, rerun with allow.cartesian=TRUE. Otherwise, please search for this error message in the FAQ, Wiki, Stack Overflow and data.table issue tracker for advice.</p>
 </blockquote>
-<p>Aparentemente as chaves de alguma das duas tabelas não são únicas. Como a tabela principal, <em>ocorrencia</em>, cruzou com as outras 3 tabelas, vamos dar uma olhadinha na tabela <em>recomendacao</em>:</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(recomendacao)</span></code></pre></div>
+<p>Aparentemente as chaves de alguma das duas tabelas não são únicas. Como a tabela central, <em>ocorrencia</em>, cruzou com as outras 3 tabelas, vamos dar uma olhadinha na tabela <em>recomendacao</em>:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">str</span>(recomendacao)</span></code></pre></div>
+<pre><code>## Classes &#39;data.table&#39; and &#39;data.frame&#39;:   1872 obs. of  9 variables:
+##  $ codigo_ocorrencia4             : int  39115 39115 39156 39156 39235 39235 39235 39275 39275 39275 ...
+##  $ recomendacao_numero            : chr  &quot;095/2011&quot; &quot;096/2011&quot; &quot;063/2011&quot; &quot;064/2011&quot; ...
+##  $ recomendacao_dia_assinatura    : IDate, format: &quot;2011-07-21&quot; &quot;2011-07-21&quot; ...
+##  $ recomendacao_dia_encaminhamento: IDate, format: &quot;2011-08-01&quot; &quot;2011-08-01&quot; ...
+##  $ recomendacao_dia_feedback      : chr  &quot;2015-12-21&quot; &quot;2011-09-16&quot; &quot;2011-09-12&quot; &quot;2014-04-16&quot; ...
+##  $ recomendacao_conteudo          : chr  &quot;Revisar os requisitos de experiência recente para a revalidação de habilitação de aviões classe monomotores ter&quot;| __truncated__ &quot;Divulgar o presente relatório final aos operadores privados, visando elevar o alerta situacional quanto ao cálc&quot;| __truncated__ &quot;Divulgar este Relatório aos operadores de aeronave ATR-72-212A, alertando para a adoção dos procedimentos previ&quot;| __truncated__ &quot;Acompanhar junto à autoridade primária de certificação do motor o estudo de projeto do fabricante para remover &quot;| __truncated__ ...
+##  $ recomendacao_status            : chr  &quot;NÃO CUMPRIDA&quot; &quot;CUMPRIDA&quot; &quot;CUMPRIDA&quot; &quot;CUMPRIDA DE FORMA ALTERNATIVA&quot; ...
+##  $ recomendacao_destinatario_sigla: chr  &quot;ANAC&quot; &quot;ANAC&quot; &quot;ANAC&quot; &quot;ANAC&quot; ...
+##  $ recomendacao_destinatario      : chr  &quot;AGÊNCIA NACIONAL DE AVIAÇÃO CIVIL&quot; &quot;AGÊNCIA NACIONAL DE AVIAÇÃO CIVIL&quot; &quot;AGÊNCIA NACIONAL DE AVIAÇÃO CIVIL&quot; &quot;AGÊNCIA NACIONAL DE AVIAÇÃO CIVIL&quot; ...
+##  - attr(*, &quot;.internal.selfref&quot;)=&lt;externalptr&gt;</code></pre>
+<p>Opa! Podemos ver que <em>codigo_ocorrencia4</em> de fato ocorre duas vezes! Mas por quê? Vamos dar uma analisada mais afundo na base e ver se podemos entendê-la melhor. Também darei uma olhada se há um metadados dessa tabela lá no site - possibilitando o nosso melhor entendimento do que de fato seja uma recomendação.</p>
+<p>Bom, não existeu metadados. Vamos na marra então!</p>
+<p>Como a chave <em>codigo_ocorrencia4</em> repete duas vezes, vamos pegar o primeiro elemento da coluna como exemplo e ver como ela se comporta.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>recomendacao[codigo_ocorrencia4 <span class="sc">==</span> <span class="dv">39115</span>]</span></code></pre></div>
 <pre><code>##    codigo_ocorrencia4 recomendacao_numero recomendacao_dia_assinatura
 ## 1:              39115            095/2011                  2011-07-21
 ## 2:              39115            096/2011                  2011-07-21
-## 3:              39156            063/2011                  2011-06-30
-## 4:              39156            064/2011                  2011-06-30
-## 5:              39235            205/2011                  2011-08-29
-## 6:              39235            206/D/11                  2011-08-29
 ##    recomendacao_dia_encaminhamento recomendacao_dia_feedback
 ## 1:                      2011-08-01                2015-12-21
 ## 2:                      2011-08-01                2011-09-16
-## 3:                      2011-08-01                2011-09-12
-## 4:                      2011-08-01                2014-04-16
-## 5:                      2011-09-29                2012-11-06
-## 6:                      2011-08-29                      NULL
-##                                                                                                                                                                                                                                                recomendacao_conteudo
-## 1:               Revisar os requisitos de experiência recente para a revalidação de habilitação de aviões classe monomotores terrestres, visando assegurar-se de que são adequados para pilotos com baixo número de horas de voo durante dois ou mais anos seguidos.
-## 2:                                                                                                                Divulgar o presente relatório final aos operadores privados, visando elevar o alerta situacional quanto ao cálculo e gerenciamento do combustível.
-## 3:                                                        Divulgar este Relatório aos operadores de aeronave ATR-72-212A, alertando para a adoção dos procedimentos previstos no Manual de Manutenção do Motor para a instalação dos bicos injetores de combustível.
-## 4: Acompanhar junto à autoridade primária de certificação do motor o estudo de projeto do fabricante para remover o anel de vedação, visando aumentar a possibilidade de detectar uma instalação inadequada de bicos injetores antes do retorno do motor ao serviço.
-## 5:                                                                                                                                          Realizar uma vistoria de segurança de voo na Aero Agrícola Rio Verde, a fim de verificar as suas condições operacionais.
-## 6:                                                                                                                                     Divulgar este Relatório Final, enfatizando a possibilidade de instalação inadequada dos bicos injetores e suas consequências.
-##              recomendacao_status recomendacao_destinatario_sigla
-## 1:                  NÃO CUMPRIDA                            ANAC
-## 2:                      CUMPRIDA                            ANAC
-## 3:                      CUMPRIDA                            ANAC
-## 4: CUMPRIDA DE FORMA ALTERNATIVA                            ANAC
-## 5:                      CUMPRIDA                            ANAC
-## 6:                      CUMPRIDA                        SERIPA-6
-##                                                       recomendacao_destinatario
-## 1:                                            AGÊNCIA NACIONAL DE AVIAÇÃO CIVIL
-## 2:                                            AGÊNCIA NACIONAL DE AVIAÇÃO CIVIL
-## 3:                                            AGÊNCIA NACIONAL DE AVIAÇÃO CIVIL
-## 4:                                            AGÊNCIA NACIONAL DE AVIAÇÃO CIVIL
-## 5:                                            AGÊNCIA NACIONAL DE AVIAÇÃO CIVIL
-## 6: SEXTO SERVIÇO REGIONAL DE INVESTIGAÇÃO E PREVENÇÃO DE ACIDENTES AERONÁUTICOS</code></pre>
+##                                                                                                                                                                                                                                  recomendacao_conteudo
+## 1: Revisar os requisitos de experiência recente para a revalidação de habilitação de aviões classe monomotores terrestres, visando assegurar-se de que são adequados para pilotos com baixo número de horas de voo durante dois ou mais anos seguidos.
+## 2:                                                                                                  Divulgar o presente relatório final aos operadores privados, visando elevar o alerta situacional quanto ao cálculo e gerenciamento do combustível.
+##    recomendacao_status recomendacao_destinatario_sigla
+## 1:        NÃO CUMPRIDA                            ANAC
+## 2:            CUMPRIDA                            ANAC
+##            recomendacao_destinatario
+## 1: AGÊNCIA NACIONAL DE AVIAÇÃO CIVIL
+## 2: AGÊNCIA NACIONAL DE AVIAÇÃO CIVIL</code></pre>
+<pre><code>## [1] &quot;Revisar os requisitos de experiência recente para a revalidação de habilitação de aviões classe monomotores terrestres, visando assegurar-se de que são adequados para pilotos com baixo número de horas de voo durante dois ou mais anos seguidos.&quot;
+## [2] &quot;Divulgar o presente relatório final aos operadores privados, visando elevar o alerta situacional quanto ao cálculo e gerenciamento do combustível.&quot;</code></pre>
+<p>Hmm… Aparentemente existem <strong>múltiplas recomendações para uma mesma ocorrência</strong>. Faz sentido o nosso left join não ter funcionado plenamente. No entanto, isso é facilmente consertado trocando o join de <strong>left join</strong> para <strong>right join</strong> dado que sabemos que os valores da coluna <em>codigo_ocorrencia4</em> existem apenas uma única vez na Tabela Central, <em>ocorrencias</em>.</p>
+<p>Vamos tentar fazer o código novamente trocando o último cruzamento de left join para right join, e ver se dará certo.</p>
+<blockquote>
+<p>cruzamento1 &lt;- ocorrencia[ocorrencia_tipo, on = “codigo_ocorrencia1”] # Left Join 1 cruzamento2 &lt;- cruzamento1[aeronave, on = “codigo_ocorrencia2”] # Left Join 2 cruzamento3 &lt;- cruzamento2[fator_contribuinte, on = “codigo_ocorrencia3”] # Left Join 3 tabela &lt;- cruzamento3[recomendacao, on = “codigo_ocorrencia4”] # Left Join 4 - dá erro por chave deixar de ser única</p>
+</blockquote>
+<p>E deu erro de novo! Terei que morder minha língua aqui. Analisando um pouco melhor, após cada cruzamento, ele está duplicando algumas chaves - tornando bem difícil fazer um <em>left join</em> ou um <em>right join</em> convencional.</p>
+<p>Vamos adentrar por outro caminho. Sabemos que a tabela de recomendações possui apenas informações complementares e que não há problema (no nosso caso) de repetir as informações para cada código de ocorrência. Portanto, ao invés de fazer um <em>left join</em> como os outros, vamos partir para um <em>cartesian join</em> - já que apenas precisamos trazer essa informação para código de ocorrência, não importando se irá repetir ou não.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>cruzamento1 <span class="ot">&lt;-</span> ocorrencia[ocorrencia_tipo, on <span class="ot">=</span> <span class="st">&quot;codigo_ocorrencia1&quot;</span>] <span class="co"># Left Join 1</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>cruzamento2 <span class="ot">&lt;-</span> cruzamento1[aeronave, on <span class="ot">=</span> <span class="st">&quot;codigo_ocorrencia2&quot;</span>] <span class="co"># Left Join 2</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>cruzamento3 <span class="ot">&lt;-</span> cruzamento2[fator_contribuinte, on <span class="ot">=</span> <span class="st">&quot;codigo_ocorrencia3&quot;</span>] <span class="co"># Left Join 3</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>tabela <span class="ot">&lt;-</span> cruzamento3[recomendacao, on <span class="ot">=</span> <span class="st">&quot;codigo_ocorrencia4&quot;</span>, allow.cartesian <span class="ot">=</span> <span class="cn">TRUE</span>] <span class="co"># Cartesian Join 1</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(tabela)</span></code></pre></div>
+<pre><code>##    codigo_ocorrencia codigo_ocorrencia1 codigo_ocorrencia2 codigo_ocorrencia3
+## 1:             39115              39115              39115              39115
+## 2:             39115              39115              39115              39115
+## 3:             39115              39115              39115              39115
+## 4:             39115              39115              39115              39115
+## 5:             39115              39115              39115              39115
+## 6:             39115              39115              39115              39115
+##    codigo_ocorrencia4 ocorrencia_classificacao ocorrencia_latitude
+## 1:              39115                 ACIDENTE      -13.3805555556
+## 2:              39115                 ACIDENTE      -13.3805555556
+## 3:              39115                 ACIDENTE      -13.3805555556
+## 4:              39115                 ACIDENTE      -13.3805555556
+## 5:              39115                 ACIDENTE      -13.3805555556
+## 6:              39115                 ACIDENTE      -13.3805555556
+##    ocorrencia_longitude ocorrencia_cidade ocorrencia_uf ocorrencia_pais
+## 1:       -44.6172222222        CORRENTINA            BA          BRASIL
+## 2:       -44.6172222222        CORRENTINA            BA          BRASIL
+## 3:       -44.6172222222        CORRENTINA            BA          BRASIL
+## 4:       -44.6172222222        CORRENTINA            BA          BRASIL
+## 5:       -44.6172222222        CORRENTINA            BA          BRASIL
+## 6:       -44.6172222222        CORRENTINA            BA          BRASIL
+##    ocorrencia_aerodromo ocorrencia_dia ocorrencia_hora
+## 1:                 SNTY     07/02/2010        17:40:00
+## 2:                 SNTY     07/02/2010        17:40:00
+## 3:                 SNTY     07/02/2010        17:40:00
+## 4:                 SNTY     07/02/2010        17:40:00
+## 5:                 SNTY     07/02/2010        17:40:00
+## 6:                 SNTY     07/02/2010        17:40:00
+##    investigacao_aeronave_liberada investigacao_status
+## 1:                            SIM          FINALIZADA
+## 2:                            SIM          FINALIZADA
+## 3:                            SIM          FINALIZADA
+## 4:                            SIM          FINALIZADA
+## 5:                            SIM          FINALIZADA
+## 6:                            SIM          FINALIZADA
+##    divulgacao_relatorio_numero divulgacao_relatorio_publicado
+## 1:           A-031/CENIPA/2011                            SIM
+## 2:           A-031/CENIPA/2011                            SIM
+## 3:           A-031/CENIPA/2011                            SIM
+## 4:           A-031/CENIPA/2011                            SIM
+## 5:           A-031/CENIPA/2011                            SIM
+## 6:           A-031/CENIPA/2011                            SIM
+##    divulgacao_dia_publicacao total_recomendacoes total_aeronaves_envolvidas
+## 1:                2011-07-21                   2                          1
+## 2:                2011-07-21                   2                          1
+## 3:                2011-07-21                   2                          1
+## 4:                2011-07-21                   2                          1
+## 5:                2011-07-21                   2                          1
+## 6:                2011-07-21                   2                          1
+##    ocorrencia_saida_pista ocorrencia_tipo ocorrencia_tipo_categoria
+## 1:                    NÃO       PANE SECA   COMBUSTÍVEL | PANE SECA
+## 2:                    NÃO       PANE SECA   COMBUSTÍVEL | PANE SECA
+## 3:                    NÃO       PANE SECA   COMBUSTÍVEL | PANE SECA
+## 4:                    NÃO       PANE SECA   COMBUSTÍVEL | PANE SECA
+## 5:                    NÃO       PANE SECA   COMBUSTÍVEL | PANE SECA
+## 6:                    NÃO       PANE SECA   COMBUSTÍVEL | PANE SECA
+##    taxonomia_tipo_icao aeronave_matricula aeronave_operador_categoria
+## 1:                FUEL              PTNQX                         ***
+## 2:                FUEL              PTNQX                         ***
+## 3:                FUEL              PTNQX                         ***
+## 4:                FUEL              PTNQX                         ***
+## 5:                FUEL              PTNQX                         ***
+## 6:                FUEL              PTNQX                         ***
+##    aeronave_tipo_veiculo         aeronave_fabricante aeronave_modelo
+## 1:                 AVIÃO NEIVA INDUSTRIA AERONAUTICA        EMB-711A
+## 2:                 AVIÃO NEIVA INDUSTRIA AERONAUTICA        EMB-711A
+## 3:                 AVIÃO NEIVA INDUSTRIA AERONAUTICA        EMB-711A
+## 4:                 AVIÃO NEIVA INDUSTRIA AERONAUTICA        EMB-711A
+## 5:                 AVIÃO NEIVA INDUSTRIA AERONAUTICA        EMB-711A
+## 6:                 AVIÃO NEIVA INDUSTRIA AERONAUTICA        EMB-711A
+##    aeronave_tipo_icao aeronave_motor_tipo aeronave_motor_quantidade
+## 1:               P28R              PISTÃO                 MONOMOTOR
+## 2:               P28R              PISTÃO                 MONOMOTOR
+## 3:               P28R              PISTÃO                 MONOMOTOR
+## 4:               P28R              PISTÃO                 MONOMOTOR
+## 5:               P28R              PISTÃO                 MONOMOTOR
+## 6:               P28R              PISTÃO                 MONOMOTOR
+##    aeronave_pmd aeronave_pmd_categoria aeronave_assentos
+## 1:         1202                   1202                 4
+## 2:         1202                   1202                 4
+## 3:         1202                   1202                 4
+## 4:         1202                   1202                 4
+## 5:         1202                   1202                 4
+## 6:         1202                   1202                 4
+##    aeronave_ano_fabricacao aeronave_pais_fabricante aeronave_pais_registro
+## 1:                    1979                   BRASIL                 BRASIL
+## 2:                    1979                   BRASIL                 BRASIL
+## 3:                    1979                   BRASIL                 BRASIL
+## 4:                    1979                   BRASIL                 BRASIL
+## 5:                    1979                   BRASIL                 BRASIL
+## 6:                    1979                   BRASIL                 BRASIL
+##    aeronave_registro_categoria aeronave_registro_segmento
+## 1:                       AVIÃO                 PARTICULAR
+## 2:                       AVIÃO                 PARTICULAR
+## 3:                       AVIÃO                 PARTICULAR
+## 4:                       AVIÃO                 PARTICULAR
+## 5:                       AVIÃO                 PARTICULAR
+## 6:                       AVIÃO                 PARTICULAR
+##          aeronave_voo_origem aeronave_voo_destino aeronave_fase_operacao
+## 1: BRIGADEIRO ARARIPE MACEDO           CORRENTINA              DECOLAGEM
+## 2: BRIGADEIRO ARARIPE MACEDO           CORRENTINA              DECOLAGEM
+## 3: BRIGADEIRO ARARIPE MACEDO           CORRENTINA              DECOLAGEM
+## 4: BRIGADEIRO ARARIPE MACEDO           CORRENTINA              DECOLAGEM
+## 5: BRIGADEIRO ARARIPE MACEDO           CORRENTINA              DECOLAGEM
+## 6: BRIGADEIRO ARARIPE MACEDO           CORRENTINA              DECOLAGEM
+##    aeronave_tipo_operacao aeronave_nivel_dano aeronave_fatalidades_total
+## 1:                PRIVADA         SUBSTANCIAL                          0
+## 2:                PRIVADA         SUBSTANCIAL                          0
+## 3:                PRIVADA         SUBSTANCIAL                          0
+## 4:                PRIVADA         SUBSTANCIAL                          0
+## 5:                PRIVADA         SUBSTANCIAL                          0
+## 6:                PRIVADA         SUBSTANCIAL                          0
+##                     fator_nome            fator_aspecto  fator_condicionante
+## 1:       APLICAÇÃO DE COMANDOS DESEMPENHO DO SER HUMANO OPERAÇÃO DA AERONAVE
+## 2:     JULGAMENTO DE PILOTAGEM DESEMPENHO DO SER HUMANO OPERAÇÃO DA AERONAVE
+## 3:                   PERCEPÇÃO      ASPECTO PSICOLÓGICO           INDIVIDUAL
+## 4:         PLANEJAMENTO DE VOO DESEMPENHO DO SER HUMANO OPERAÇÃO DA AERONAVE
+## 5: POUCA EXPERIÊNCIA DO PILOTO DESEMPENHO DO SER HUMANO OPERAÇÃO DA AERONAVE
+## 6:          PROCESSO DECISÓRIO      ASPECTO PSICOLÓGICO           INDIVIDUAL
+##           fator_area recomendacao_numero recomendacao_dia_assinatura
+## 1: FATOR OPERACIONAL            095/2011                  2011-07-21
+## 2: FATOR OPERACIONAL            095/2011                  2011-07-21
+## 3:      FATOR HUMANO            095/2011                  2011-07-21
+## 4: FATOR OPERACIONAL            095/2011                  2011-07-21
+## 5: FATOR OPERACIONAL            095/2011                  2011-07-21
+## 6:      FATOR HUMANO            095/2011                  2011-07-21
+##    recomendacao_dia_encaminhamento recomendacao_dia_feedback
+## 1:                      2011-08-01                2015-12-21
+## 2:                      2011-08-01                2015-12-21
+## 3:                      2011-08-01                2015-12-21
+## 4:                      2011-08-01                2015-12-21
+## 5:                      2011-08-01                2015-12-21
+## 6:                      2011-08-01                2015-12-21
+##                                                                                                                                                                                                                                  recomendacao_conteudo
+## 1: Revisar os requisitos de experiência recente para a revalidação de habilitação de aviões classe monomotores terrestres, visando assegurar-se de que são adequados para pilotos com baixo número de horas de voo durante dois ou mais anos seguidos.
+## 2: Revisar os requisitos de experiência recente para a revalidação de habilitação de aviões classe monomotores terrestres, visando assegurar-se de que são adequados para pilotos com baixo número de horas de voo durante dois ou mais anos seguidos.
+## 3: Revisar os requisitos de experiência recente para a revalidação de habilitação de aviões classe monomotores terrestres, visando assegurar-se de que são adequados para pilotos com baixo número de horas de voo durante dois ou mais anos seguidos.
+## 4: Revisar os requisitos de experiência recente para a revalidação de habilitação de aviões classe monomotores terrestres, visando assegurar-se de que são adequados para pilotos com baixo número de horas de voo durante dois ou mais anos seguidos.
+## 5: Revisar os requisitos de experiência recente para a revalidação de habilitação de aviões classe monomotores terrestres, visando assegurar-se de que são adequados para pilotos com baixo número de horas de voo durante dois ou mais anos seguidos.
+## 6: Revisar os requisitos de experiência recente para a revalidação de habilitação de aviões classe monomotores terrestres, visando assegurar-se de que são adequados para pilotos com baixo número de horas de voo durante dois ou mais anos seguidos.
+##    recomendacao_status recomendacao_destinatario_sigla
+## 1:        NÃO CUMPRIDA                            ANAC
+## 2:        NÃO CUMPRIDA                            ANAC
+## 3:        NÃO CUMPRIDA                            ANAC
+## 4:        NÃO CUMPRIDA                            ANAC
+## 5:        NÃO CUMPRIDA                            ANAC
+## 6:        NÃO CUMPRIDA                            ANAC
+##            recomendacao_destinatario
+## 1: AGÊNCIA NACIONAL DE AVIAÇÃO CIVIL
+## 2: AGÊNCIA NACIONAL DE AVIAÇÃO CIVIL
+## 3: AGÊNCIA NACIONAL DE AVIAÇÃO CIVIL
+## 4: AGÊNCIA NACIONAL DE AVIAÇÃO CIVIL
+## 5: AGÊNCIA NACIONAL DE AVIAÇÃO CIVIL
+## 6: AGÊNCIA NACIONAL DE AVIAÇÃO CIVIL</code></pre>
+<p>E deu certo! <em>Wheeew.</em> Agora que finalmente temos uma base com todos os dados agregados, podemos brincar um pouco com ela! :)</p>
 </div>
 </div>
 </div>
