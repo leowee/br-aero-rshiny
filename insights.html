@@ -195,10 +195,14 @@
         <nav role="navigation" id="toc">
           <ul>
           <li><a href="#introdução">Introdução</a></li>
-          <li><a href="#programa">Programa</a>
+          <li><a href="#importação-e-tratamentos-iniciais-dos-dados">Importação e Tratamentos Iniciais dos Dados</a>
           <ul>
           <li><a href="#importação-dos-dados">Importação dos Dados</a></li>
           <li><a href="#cruzamento-dos-dados">Cruzamento dos Dados</a></li>
+          </ul></li>
+          <li><a href="#análises">Análises</a>
+          <ul>
+          <li><a href="#número-de-ocorrências">Número de Ocorrências</a></li>
           </ul></li>
           </ul>
         </nav>
@@ -309,8 +313,8 @@
 </table>
 <hr />
 </div>
-<div id="programa" class="section level1">
-<h1>Programa</h1>
+<div id="importação-e-tratamentos-iniciais-dos-dados" class="section level1">
+<h1>Importação e Tratamentos Iniciais dos Dados</h1>
 <div id="importação-dos-dados" class="section level2">
 <h2>Importação dos Dados</h2>
 <p>Bom, iniciamos o programa importando as informações do portal da CENIPA (Centro de Investigação e Prevenção de Acidentes Aeronáuticos) encontrados no link mencionados na Introdução.</p>
@@ -389,88 +393,183 @@
 <p>E olha só! As colunas são de fato idênticas! Pode ser que um dia essas colunas sejam diferentes por algum motivo, mas no momento de nossa análise elas são idênticas.</p>
 <p>Isso não mudará muita coisa no nosso cruzamento, mas isso significa que podemos descartar alguns dados mais para frente, pós o cruzamento.</p>
 <p>Voltando ao que interessa, vamos para o cruzamento - fazendo 4 left joins seguidos:</p>
-<blockquote>
-<p>cruzamento1 &lt;- ocorrencia[ocorrencia_tipo, on = “codigo_ocorrencia1”] # Left Join 1 cruzamento2 &lt;- cruzamento1[aeronave, on = “codigo_ocorrencia2”] # Left Join 2 cruzamento3 &lt;- cruzamento2[fator_contribuinte, on = “codigo_ocorrencia3”] # Left Join 3 tabela &lt;- cruzamento3[recomendacao, on = “codigo_ocorrencia4”] # Left Join 4</p>
-</blockquote>
-<p>Rodando o código acima, obteremos um erro vindo do último cruzamento, um left join entre <em>ocorrencia</em> e <em>recomendacao</em>:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>cruzamento1 <span class="ot">&lt;-</span> ocorrencia[ocorrencia_tipo, on <span class="ot">=</span> <span class="st">&quot;codigo_ocorrencia1&quot;</span>] <span class="co"># Left Join 1</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>cruzamento2 <span class="ot">&lt;-</span> cruzamento1[aeronave, on <span class="ot">=</span> <span class="st">&quot;codigo_ocorrencia2&quot;</span>] <span class="co"># Left Join 2</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>cruzamento3 <span class="ot">&lt;-</span> cruzamento2[fator_contribuinte, on <span class="ot">=</span> <span class="st">&quot;codigo_ocorrencia3&quot;</span>] <span class="co"># Left Join 3</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="co"># tabela &lt;- cruzamento3[recomendacao, on = &quot;codigo_ocorrencia4&quot;] # Left Join 4</span></span></code></pre></div>
+<p>Rodando o código acima sem a última linha estar comentada, obteremos um erro vindo do último cruzamento, um left join entre <em>ocorrencia</em> e <em>recomendacao</em>:</p>
 <blockquote>
 <p>Error in vecseq(f__, len<strong>, if (allow.cartesian || notjoin || !anyDuplicated(f</strong>, : Join results in 11387 rows; more than 6687 = nrow(x)+nrow(i). Check for duplicate key values in i each of which join to the same group in x over and over again. If that’s ok, try by=.EACHI to run j for each group to avoid the large allocation. If you are sure you wish to proceed, rerun with allow.cartesian=TRUE. Otherwise, please search for this error message in the FAQ, Wiki, Stack Overflow and data.table issue tracker for advice.</p>
 </blockquote>
-<p>Aparentemente as chaves de alguma das duas tabelas não são únicas. Como a tabela central, <em>ocorrencia</em>, cruzou com as outras 3 tabelas, vamos dar uma olhadinha na tabela <em>recomendacao</em>:</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">str</span>(recomendacao)</span></code></pre></div>
-<pre><code>## Classes &#39;data.table&#39; and &#39;data.frame&#39;:   1872 obs. of  9 variables:
-##  $ codigo_ocorrencia4             : int  39115 39115 39156 39156 39235 39235 39235 39275 39275 39275 ...
-##  $ recomendacao_numero            : chr  &quot;095/2011&quot; &quot;096/2011&quot; &quot;063/2011&quot; &quot;064/2011&quot; ...
-##  $ recomendacao_dia_assinatura    : IDate, format: &quot;2011-07-21&quot; &quot;2011-07-21&quot; ...
-##  $ recomendacao_dia_encaminhamento: IDate, format: &quot;2011-08-01&quot; &quot;2011-08-01&quot; ...
-##  $ recomendacao_dia_feedback      : chr  &quot;2015-12-21&quot; &quot;2011-09-16&quot; &quot;2011-09-12&quot; &quot;2014-04-16&quot; ...
-##  $ recomendacao_conteudo          : chr  &quot;Revisar os requisitos de experiência recente para a revalidação de habilitação de aviões classe monomotores ter&quot;| __truncated__ &quot;Divulgar o presente relatório final aos operadores privados, visando elevar o alerta situacional quanto ao cálc&quot;| __truncated__ &quot;Divulgar este Relatório aos operadores de aeronave ATR-72-212A, alertando para a adoção dos procedimentos previ&quot;| __truncated__ &quot;Acompanhar junto à autoridade primária de certificação do motor o estudo de projeto do fabricante para remover &quot;| __truncated__ ...
-##  $ recomendacao_status            : chr  &quot;NÃO CUMPRIDA&quot; &quot;CUMPRIDA&quot; &quot;CUMPRIDA&quot; &quot;CUMPRIDA DE FORMA ALTERNATIVA&quot; ...
-##  $ recomendacao_destinatario_sigla: chr  &quot;ANAC&quot; &quot;ANAC&quot; &quot;ANAC&quot; &quot;ANAC&quot; ...
-##  $ recomendacao_destinatario      : chr  &quot;AGÊNCIA NACIONAL DE AVIAÇÃO CIVIL&quot; &quot;AGÊNCIA NACIONAL DE AVIAÇÃO CIVIL&quot; &quot;AGÊNCIA NACIONAL DE AVIAÇÃO CIVIL&quot; &quot;AGÊNCIA NACIONAL DE AVIAÇÃO CIVIL&quot; ...
-##  - attr(*, &quot;.internal.selfref&quot;)=&lt;externalptr&gt;</code></pre>
-<p>Opa! Podemos ver que <em>codigo_ocorrencia4</em> de fato ocorre duas vezes! Mas por quê? Vamos dar uma analisada mais afundo na base e ver se podemos entendê-la melhor. Também darei uma olhada se há um metadados dessa tabela lá no site - possibilitando o nosso melhor entendimento do que de fato seja uma recomendação.</p>
-<p>Bom, não existeu metadados. Vamos na marra então!</p>
-<p>Como a chave <em>codigo_ocorrencia4</em> repete duas vezes, vamos pegar o primeiro elemento da coluna como exemplo e ver como ela se comporta.</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>recomendacao[codigo_ocorrencia4 <span class="sc">==</span> <span class="dv">39115</span>]</span></code></pre></div>
+<p>Aparentemente as chaves de alguma das duas tabelas não são únicas. Vamos dar uma olhadinha na frequências das chaves (código de ocorrência - <em>codigo_ocorrencia</em>) das tabelas:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(ocorrencia[, .(<span class="at">n =</span> .N), <span class="at">by =</span> codigo_ocorrencia][n <span class="sc">&gt;</span> <span class="dv">1</span>][<span class="fu">order</span>(<span class="sc">-</span>n)])</span></code></pre></div>
+<pre><code>## Empty data.table (0 rows and 2 cols): codigo_ocorrencia,n</code></pre>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(ocorrencia_tipo[, .(<span class="at">n =</span> .N), <span class="at">by =</span> codigo_ocorrencia1][n <span class="sc">&gt;</span> <span class="dv">1</span>][<span class="fu">order</span>(<span class="sc">-</span>n)])</span></code></pre></div>
+<pre><code>##    codigo_ocorrencia1 n
+## 1:              66444 3
+## 2:              78780 3
+## 3:              78879 3
+## 4:              78904 3
+## 5:              79620 3
+## 6:              79651 3</code></pre>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(aeronave[, .(<span class="at">n =</span> .N), <span class="at">by =</span> codigo_ocorrencia2][n <span class="sc">&gt;</span> <span class="dv">1</span>][<span class="fu">order</span>(<span class="sc">-</span>n)])</span></code></pre></div>
+<pre><code>##    codigo_ocorrencia2 n
+## 1:              45689 3
+## 2:              78249 3
+## 3:              79441 3
+## 4:              41609 2
+## 5:              43869 2
+## 6:              44944 2</code></pre>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(fator_contribuinte[, .(<span class="at">n =</span> .N), <span class="at">by =</span> codigo_ocorrencia3][n <span class="sc">&gt;</span> <span class="dv">1</span>][<span class="fu">order</span>(<span class="sc">-</span>n)])</span></code></pre></div>
+<pre><code>##    codigo_ocorrencia3  n
+## 1:              41053 19
+## 2:              42250 19
+## 3:              42921 19
+## 4:              44660 18
+## 5:              44796 18
+## 6:              53340 17</code></pre>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(recomendacao[, .(<span class="at">n =</span> .N), <span class="at">by =</span> codigo_ocorrencia4][n <span class="sc">&gt;</span> <span class="dv">1</span>][<span class="fu">order</span>(<span class="sc">-</span>n)])</span></code></pre></div>
+<pre><code>##    codigo_ocorrencia4  n
+## 1:              44796 23
+## 2:              45554 20
+## 3:              42250 19
+## 4:              52265 13
+## 5:              66432 12
+## 6:              39992 11</code></pre>
+<p>Bom, dado que não há uma chave comum entre as tabelas que não estejam duplicadas, não é possível fazer um join direto entre elas. No entanto, como nossas tabelas não possuem nenhum campo de valor que poderíamos agregar (exceto 3 colunas que contém o nome “total”, mas que podem ser recalculadas usando as variáveis de origem), nós conseguimos fazer algo ainda que nos ajude a colocar tudo numa tabela só, usando cruzamento cartesiano (<em>cartesian join</em>).</p>
+<p>Então, para fazer o cruzamento cartesiano no data.table basta especificar o argumento no final. Vamos ver se agora dará certo…</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>cruzamento1 <span class="ot">&lt;-</span> ocorrencia_tipo[ocorrencia, on <span class="ot">=</span> <span class="st">&quot;codigo_ocorrencia1&quot;</span>, allow.cartesian <span class="ot">=</span> <span class="cn">TRUE</span>] <span class="co"># Left Join 1</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>cruzamento2 <span class="ot">&lt;-</span> aeronave[cruzamento1, on <span class="ot">=</span> <span class="st">&quot;codigo_ocorrencia2&quot;</span>, allow.cartesian <span class="ot">=</span> <span class="cn">TRUE</span>] <span class="co"># Left Join 2</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>cruzamento3 <span class="ot">&lt;-</span> fator_contribuinte[cruzamento2, on <span class="ot">=</span> <span class="st">&quot;codigo_ocorrencia3&quot;</span>, allow.cartesian <span class="ot">=</span> <span class="cn">TRUE</span>] <span class="co"># Left Join 3</span></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>tabela <span class="ot">&lt;-</span> recomendacao[cruzamento3, on <span class="ot">=</span> <span class="st">&quot;codigo_ocorrencia4&quot;</span>, allow.cartesian <span class="ot">=</span> <span class="cn">TRUE</span>] <span class="co"># Left Join 4</span></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(tabela)</span></code></pre></div>
 <pre><code>##    codigo_ocorrencia4 recomendacao_numero recomendacao_dia_assinatura
-## 1:              39115            095/2011                  2011-07-21
-## 2:              39115            096/2011                  2011-07-21
+## 1:              40211                &lt;NA&gt;                        &lt;NA&gt;
+## 2:              40349                &lt;NA&gt;                        &lt;NA&gt;
+## 3:              40351                &lt;NA&gt;                        &lt;NA&gt;
+## 4:              39527                &lt;NA&gt;                        &lt;NA&gt;
+## 5:              39527                &lt;NA&gt;                        &lt;NA&gt;
+## 6:              39527                &lt;NA&gt;                        &lt;NA&gt;
 ##    recomendacao_dia_encaminhamento recomendacao_dia_feedback
-## 1:                      2011-08-01                2015-12-21
-## 2:                      2011-08-01                2011-09-16
-##                                                                                                                                                                                                                                  recomendacao_conteudo
-## 1: Revisar os requisitos de experiência recente para a revalidação de habilitação de aviões classe monomotores terrestres, visando assegurar-se de que são adequados para pilotos com baixo número de horas de voo durante dois ou mais anos seguidos.
-## 2:                                                                                                  Divulgar o presente relatório final aos operadores privados, visando elevar o alerta situacional quanto ao cálculo e gerenciamento do combustível.
-##    recomendacao_status recomendacao_destinatario_sigla
-## 1:        NÃO CUMPRIDA                            ANAC
-## 2:            CUMPRIDA                            ANAC
-##            recomendacao_destinatario
-## 1: AGÊNCIA NACIONAL DE AVIAÇÃO CIVIL
-## 2: AGÊNCIA NACIONAL DE AVIAÇÃO CIVIL</code></pre>
-<pre><code>## [1] &quot;Revisar os requisitos de experiência recente para a revalidação de habilitação de aviões classe monomotores terrestres, visando assegurar-se de que são adequados para pilotos com baixo número de horas de voo durante dois ou mais anos seguidos.&quot;
-## [2] &quot;Divulgar o presente relatório final aos operadores privados, visando elevar o alerta situacional quanto ao cálculo e gerenciamento do combustível.&quot;</code></pre>
-<p>Hmm… Aparentemente existem <strong>múltiplas recomendações para uma mesma ocorrência</strong>. Faz sentido o nosso left join não ter funcionado plenamente. No entanto, isso é facilmente consertado trocando o join de <strong>left join</strong> para <strong>right join</strong> dado que sabemos que os valores da coluna <em>codigo_ocorrencia4</em> existem apenas uma única vez na Tabela Central, <em>ocorrencias</em>.</p>
-<p>Vamos tentar fazer o código novamente trocando o último cruzamento de left join para right join, e ver se dará certo.</p>
-<blockquote>
-<p>cruzamento1 &lt;- ocorrencia[ocorrencia_tipo, on = “codigo_ocorrencia1”] # Left Join 1 cruzamento2 &lt;- cruzamento1[aeronave, on = “codigo_ocorrencia2”] # Left Join 2 cruzamento3 &lt;- cruzamento2[fator_contribuinte, on = “codigo_ocorrencia3”] # Left Join 3 tabela &lt;- cruzamento3[recomendacao, on = “codigo_ocorrencia4”] # Left Join 4 - dá erro por chave deixar de ser única</p>
-</blockquote>
-<p>E deu erro de novo! Terei que morder minha língua aqui. Analisando um pouco melhor, após cada cruzamento, ele está duplicando algumas chaves - tornando bem difícil fazer um <em>left join</em> ou um <em>right join</em> convencional.</p>
-<p>Vamos adentrar por outro caminho. Sabemos que a tabela de recomendações possui apenas informações complementares e que não há problema (no nosso caso) de repetir as informações para cada código de ocorrência. Portanto, ao invés de fazer um <em>left join</em> como os outros, vamos partir para um <em>cartesian join</em> - já que apenas precisamos trazer essa informação para código de ocorrência, não importando se irá repetir ou não.</p>
-<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>cruzamento1 <span class="ot">&lt;-</span> ocorrencia[ocorrencia_tipo, on <span class="ot">=</span> <span class="st">&quot;codigo_ocorrencia1&quot;</span>] <span class="co"># Left Join 1</span></span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>cruzamento2 <span class="ot">&lt;-</span> cruzamento1[aeronave, on <span class="ot">=</span> <span class="st">&quot;codigo_ocorrencia2&quot;</span>] <span class="co"># Left Join 2</span></span>
-<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>cruzamento3 <span class="ot">&lt;-</span> cruzamento2[fator_contribuinte, on <span class="ot">=</span> <span class="st">&quot;codigo_ocorrencia3&quot;</span>] <span class="co"># Left Join 3</span></span>
-<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>tabela <span class="ot">&lt;-</span> cruzamento3[recomendacao, on <span class="ot">=</span> <span class="st">&quot;codigo_ocorrencia4&quot;</span>, allow.cartesian <span class="ot">=</span> <span class="cn">TRUE</span>] <span class="co"># Cartesian Join 1</span></span>
-<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(tabela)</span></code></pre></div>
-<pre><code>##    codigo_ocorrencia codigo_ocorrencia1 codigo_ocorrencia2 codigo_ocorrencia3
-## 1:             39115              39115              39115              39115
-## 2:             39115              39115              39115              39115
-## 3:             39115              39115              39115              39115
-## 4:             39115              39115              39115              39115
-## 5:             39115              39115              39115              39115
-## 6:             39115              39115              39115              39115
-##    codigo_ocorrencia4 ocorrencia_classificacao ocorrencia_latitude
-## 1:              39115                 ACIDENTE      -13.3805555556
-## 2:              39115                 ACIDENTE      -13.3805555556
-## 3:              39115                 ACIDENTE      -13.3805555556
-## 4:              39115                 ACIDENTE      -13.3805555556
-## 5:              39115                 ACIDENTE      -13.3805555556
-## 6:              39115                 ACIDENTE      -13.3805555556
-##    ocorrencia_longitude ocorrencia_cidade ocorrencia_uf ocorrencia_pais
-## 1:       -44.6172222222        CORRENTINA            BA          BRASIL
-## 2:       -44.6172222222        CORRENTINA            BA          BRASIL
-## 3:       -44.6172222222        CORRENTINA            BA          BRASIL
-## 4:       -44.6172222222        CORRENTINA            BA          BRASIL
-## 5:       -44.6172222222        CORRENTINA            BA          BRASIL
-## 6:       -44.6172222222        CORRENTINA            BA          BRASIL
+## 1:                            &lt;NA&gt;                      &lt;NA&gt;
+## 2:                            &lt;NA&gt;                      &lt;NA&gt;
+## 3:                            &lt;NA&gt;                      &lt;NA&gt;
+## 4:                            &lt;NA&gt;                      &lt;NA&gt;
+## 5:                            &lt;NA&gt;                      &lt;NA&gt;
+## 6:                            &lt;NA&gt;                      &lt;NA&gt;
+##    recomendacao_conteudo recomendacao_status recomendacao_destinatario_sigla
+## 1:                  &lt;NA&gt;                &lt;NA&gt;                            &lt;NA&gt;
+## 2:                  &lt;NA&gt;                &lt;NA&gt;                            &lt;NA&gt;
+## 3:                  &lt;NA&gt;                &lt;NA&gt;                            &lt;NA&gt;
+## 4:                  &lt;NA&gt;                &lt;NA&gt;                            &lt;NA&gt;
+## 5:                  &lt;NA&gt;                &lt;NA&gt;                            &lt;NA&gt;
+## 6:                  &lt;NA&gt;                &lt;NA&gt;                            &lt;NA&gt;
+##    recomendacao_destinatario codigo_ocorrencia3              fator_nome
+## 1:                      &lt;NA&gt;              40211                    &lt;NA&gt;
+## 2:                      &lt;NA&gt;              40349                    &lt;NA&gt;
+## 3:                      &lt;NA&gt;              40351                    &lt;NA&gt;
+## 4:                      &lt;NA&gt;              39527   APLICAÇÃO DE COMANDOS
+## 5:                      &lt;NA&gt;              39527 JULGAMENTO DE PILOTAGEM
+## 6:                      &lt;NA&gt;              39527     PLANEJAMENTO DE VOO
+##               fator_aspecto  fator_condicionante        fator_area
+## 1:                     &lt;NA&gt;                 &lt;NA&gt;              &lt;NA&gt;
+## 2:                     &lt;NA&gt;                 &lt;NA&gt;              &lt;NA&gt;
+## 3:                     &lt;NA&gt;                 &lt;NA&gt;              &lt;NA&gt;
+## 4: DESEMPENHO DO SER HUMANO OPERAÇÃO DA AERONAVE FATOR OPERACIONAL
+## 5: DESEMPENHO DO SER HUMANO OPERAÇÃO DA AERONAVE FATOR OPERACIONAL
+## 6: DESEMPENHO DO SER HUMANO OPERAÇÃO DA AERONAVE FATOR OPERACIONAL
+##    codigo_ocorrencia2 aeronave_matricula aeronave_operador_categoria
+## 1:              40211              PRCHE                  TÁXI AÉREO
+## 2:              40349              PRMAB                     REGULAR
+## 3:              40351              PRMBW                     REGULAR
+## 4:              39527              PTURT                         ***
+## 5:              39527              PTURT                         ***
+## 6:              39527              PTURT                         ***
+##    aeronave_tipo_veiculo         aeronave_fabricante aeronave_modelo
+## 1:           HELICÓPTERO           SIKORSKY AIRCRAFT           S-76C
+## 2:                 AVIÃO            AIRBUS INDUSTRIE        A320-232
+## 3:                 AVIÃO            AIRBUS INDUSTRIE        A319-132
+## 4:                 AVIÃO NEIVA INDUSTRIA AERONAUTICA         EMB-202
+## 5:                 AVIÃO NEIVA INDUSTRIA AERONAUTICA         EMB-202
+## 6:                 AVIÃO NEIVA INDUSTRIA AERONAUTICA         EMB-202
+##    aeronave_tipo_icao aeronave_motor_tipo aeronave_motor_quantidade
+## 1:                S76           TURBOEIXO                   BIMOTOR
+## 2:               A320                JATO                   BIMOTOR
+## 3:               A319                JATO                   BIMOTOR
+## 4:               IPAN              PISTÃO                 MONOMOTOR
+## 5:               IPAN              PISTÃO                 MONOMOTOR
+## 6:               IPAN              PISTÃO                 MONOMOTOR
+##    aeronave_pmd aeronave_pmd_categoria aeronave_assentos
+## 1:         5307                   5307                14
+## 2:        70000                  70000               184
+## 3:        75500                  75500               154
+## 4:         1800                   1800                 1
+## 5:         1800                   1800                 1
+## 6:         1800                   1800                 1
+##    aeronave_ano_fabricacao aeronave_pais_fabricante aeronave_pais_registro
+## 1:                    2007                   BRASIL                 BRASIL
+## 2:                    2001                   BRASIL                 BRASIL
+## 3:                    2008                   BRASIL                 BRASIL
+## 4:                    2004                   BRASIL                 BRASIL
+## 5:                    2004                   BRASIL                 BRASIL
+## 6:                    2004                   BRASIL                 BRASIL
+##    aeronave_registro_categoria aeronave_registro_segmento
+## 1:                 HELICÓPTERO                 TÁXI AÉREO
+## 2:                       AVIÃO                    REGULAR
+## 3:                       AVIÃO                    REGULAR
+## 4:                       AVIÃO                 PARTICULAR
+## 5:                       AVIÃO                 PARTICULAR
+## 6:                       AVIÃO                 PARTICULAR
+##         aeronave_voo_origem     aeronave_voo_destino aeronave_fase_operacao
+## 1:        FORA DE AERODROMO        FORA DE AERODROMO              DECOLAGEM
+## 2:        FORA DE AERODROMO        FORA DE AERODROMO              DECOLAGEM
+## 3:        FORA DE AERODROMO        FORA DE AERODROMO          INDETERMINADA
+## 4: FAZENDA IRMÃOS MUNARETTO FAZENDA IRMÃOS MUNARETTO     VOO A BAIXA ALTURA
+## 5: FAZENDA IRMÃOS MUNARETTO FAZENDA IRMÃOS MUNARETTO     VOO A BAIXA ALTURA
+## 6: FAZENDA IRMÃOS MUNARETTO FAZENDA IRMÃOS MUNARETTO     VOO A BAIXA ALTURA
+##    aeronave_tipo_operacao aeronave_nivel_dano aeronave_fatalidades_total
+## 1:             TÁXI AÉREO              NENHUM                          0
+## 2:                REGULAR                LEVE                          0
+## 3:                REGULAR                LEVE                          0
+## 4:               AGRÍCOLA         SUBSTANCIAL                          0
+## 5:               AGRÍCOLA         SUBSTANCIAL                          0
+## 6:               AGRÍCOLA         SUBSTANCIAL                          0
+##    codigo_ocorrencia1           ocorrencia_tipo
+## 1:              40211             TRÁFEGO AÉREO
+## 2:              40349           COLISÃO COM AVE
+## 3:              40351           COLISÃO COM AVE
+## 4:              39527 OPERAÇÃO A BAIXA ALTITUDE
+## 5:              39527 OPERAÇÃO A BAIXA ALTITUDE
+## 6:              39527 OPERAÇÃO A BAIXA ALTITUDE
+##                              ocorrencia_tipo_categoria taxonomia_tipo_icao
+## 1: PERDA DE SEPARAÇÃO / COLISÃO EM VOO | TRÁFEGO AÉREO                 MAC
+## 2:                                     COLISÃO COM AVE                BIRD
+## 3:                                     COLISÃO COM AVE                BIRD
+## 4:                           OPERAÇÃO A BAIXA ALTITUDE                LALT
+## 5:                           OPERAÇÃO A BAIXA ALTITUDE                LALT
+## 6:                           OPERAÇÃO A BAIXA ALTITUDE                LALT
+##    codigo_ocorrencia ocorrencia_classificacao ocorrencia_latitude
+## 1:             40211                INCIDENTE                 ***
+## 2:             40349                INCIDENTE                    
+## 3:             40351                INCIDENTE                    
+## 4:             39527                 ACIDENTE      -13.1066666667
+## 5:             39527                 ACIDENTE      -13.1066666667
+## 6:             39527                 ACIDENTE      -13.1066666667
+##    ocorrencia_longitude  ocorrencia_cidade ocorrencia_uf ocorrencia_pais
+## 1:                  ***     RIO DE JANEIRO            RJ          BRASIL
+## 2:                                   BELÉM            PA          BRASIL
+## 3:                          RIO DE JANEIRO            RJ          BRASIL
+## 4:       -55.9930555556 LUCAS DO RIO VERDE            MT          BRASIL
+## 5:       -55.9930555556 LUCAS DO RIO VERDE            MT          BRASIL
+## 6:       -55.9930555556 LUCAS DO RIO VERDE            MT          BRASIL
 ##    ocorrencia_aerodromo ocorrencia_dia ocorrencia_hora
-## 1:                 SNTY     07/02/2010        17:40:00
-## 2:                 SNTY     07/02/2010        17:40:00
-## 3:                 SNTY     07/02/2010        17:40:00
-## 4:                 SNTY     07/02/2010        17:40:00
-## 5:                 SNTY     07/02/2010        17:40:00
-## 6:                 SNTY     07/02/2010        17:40:00
+## 1:                 ****     03/01/2010        12:00:00
+## 2:                 SBBE     03/01/2010        11:05:00
+## 3:                 SBRJ     03/01/2010        03:00:00
+## 4:                 ****     04/01/2010        17:30:00
+## 5:                 ****     04/01/2010        17:30:00
+## 6:                 ****     04/01/2010        17:30:00
 ##    investigacao_aeronave_liberada investigacao_status
 ## 1:                            SIM          FINALIZADA
 ## 2:                            SIM          FINALIZADA
@@ -479,126 +578,34 @@
 ## 5:                            SIM          FINALIZADA
 ## 6:                            SIM          FINALIZADA
 ##    divulgacao_relatorio_numero divulgacao_relatorio_publicado
-## 1:           A-031/CENIPA/2011                            SIM
-## 2:           A-031/CENIPA/2011                            SIM
-## 3:           A-031/CENIPA/2011                            SIM
-## 4:           A-031/CENIPA/2011                            SIM
-## 5:           A-031/CENIPA/2011                            SIM
-## 6:           A-031/CENIPA/2011                            SIM
+## 1:                         ***                            NÃO
+## 2:                                                        NÃO
+## 3:                                                        NÃO
+## 4:           A-539/CENIPA/2018                            SIM
+## 5:           A-539/CENIPA/2018                            SIM
+## 6:           A-539/CENIPA/2018                            SIM
 ##    divulgacao_dia_publicacao total_recomendacoes total_aeronaves_envolvidas
-## 1:                2011-07-21                   2                          1
-## 2:                2011-07-21                   2                          1
-## 3:                2011-07-21                   2                          1
-## 4:                2011-07-21                   2                          1
-## 5:                2011-07-21                   2                          1
-## 6:                2011-07-21                   2                          1
-##    ocorrencia_saida_pista ocorrencia_tipo ocorrencia_tipo_categoria
-## 1:                    NÃO       PANE SECA   COMBUSTÍVEL | PANE SECA
-## 2:                    NÃO       PANE SECA   COMBUSTÍVEL | PANE SECA
-## 3:                    NÃO       PANE SECA   COMBUSTÍVEL | PANE SECA
-## 4:                    NÃO       PANE SECA   COMBUSTÍVEL | PANE SECA
-## 5:                    NÃO       PANE SECA   COMBUSTÍVEL | PANE SECA
-## 6:                    NÃO       PANE SECA   COMBUSTÍVEL | PANE SECA
-##    taxonomia_tipo_icao aeronave_matricula aeronave_operador_categoria
-## 1:                FUEL              PTNQX                         ***
-## 2:                FUEL              PTNQX                         ***
-## 3:                FUEL              PTNQX                         ***
-## 4:                FUEL              PTNQX                         ***
-## 5:                FUEL              PTNQX                         ***
-## 6:                FUEL              PTNQX                         ***
-##    aeronave_tipo_veiculo         aeronave_fabricante aeronave_modelo
-## 1:                 AVIÃO NEIVA INDUSTRIA AERONAUTICA        EMB-711A
-## 2:                 AVIÃO NEIVA INDUSTRIA AERONAUTICA        EMB-711A
-## 3:                 AVIÃO NEIVA INDUSTRIA AERONAUTICA        EMB-711A
-## 4:                 AVIÃO NEIVA INDUSTRIA AERONAUTICA        EMB-711A
-## 5:                 AVIÃO NEIVA INDUSTRIA AERONAUTICA        EMB-711A
-## 6:                 AVIÃO NEIVA INDUSTRIA AERONAUTICA        EMB-711A
-##    aeronave_tipo_icao aeronave_motor_tipo aeronave_motor_quantidade
-## 1:               P28R              PISTÃO                 MONOMOTOR
-## 2:               P28R              PISTÃO                 MONOMOTOR
-## 3:               P28R              PISTÃO                 MONOMOTOR
-## 4:               P28R              PISTÃO                 MONOMOTOR
-## 5:               P28R              PISTÃO                 MONOMOTOR
-## 6:               P28R              PISTÃO                 MONOMOTOR
-##    aeronave_pmd aeronave_pmd_categoria aeronave_assentos
-## 1:         1202                   1202                 4
-## 2:         1202                   1202                 4
-## 3:         1202                   1202                 4
-## 4:         1202                   1202                 4
-## 5:         1202                   1202                 4
-## 6:         1202                   1202                 4
-##    aeronave_ano_fabricacao aeronave_pais_fabricante aeronave_pais_registro
-## 1:                    1979                   BRASIL                 BRASIL
-## 2:                    1979                   BRASIL                 BRASIL
-## 3:                    1979                   BRASIL                 BRASIL
-## 4:                    1979                   BRASIL                 BRASIL
-## 5:                    1979                   BRASIL                 BRASIL
-## 6:                    1979                   BRASIL                 BRASIL
-##    aeronave_registro_categoria aeronave_registro_segmento
-## 1:                       AVIÃO                 PARTICULAR
-## 2:                       AVIÃO                 PARTICULAR
-## 3:                       AVIÃO                 PARTICULAR
-## 4:                       AVIÃO                 PARTICULAR
-## 5:                       AVIÃO                 PARTICULAR
-## 6:                       AVIÃO                 PARTICULAR
-##          aeronave_voo_origem aeronave_voo_destino aeronave_fase_operacao
-## 1: BRIGADEIRO ARARIPE MACEDO           CORRENTINA              DECOLAGEM
-## 2: BRIGADEIRO ARARIPE MACEDO           CORRENTINA              DECOLAGEM
-## 3: BRIGADEIRO ARARIPE MACEDO           CORRENTINA              DECOLAGEM
-## 4: BRIGADEIRO ARARIPE MACEDO           CORRENTINA              DECOLAGEM
-## 5: BRIGADEIRO ARARIPE MACEDO           CORRENTINA              DECOLAGEM
-## 6: BRIGADEIRO ARARIPE MACEDO           CORRENTINA              DECOLAGEM
-##    aeronave_tipo_operacao aeronave_nivel_dano aeronave_fatalidades_total
-## 1:                PRIVADA         SUBSTANCIAL                          0
-## 2:                PRIVADA         SUBSTANCIAL                          0
-## 3:                PRIVADA         SUBSTANCIAL                          0
-## 4:                PRIVADA         SUBSTANCIAL                          0
-## 5:                PRIVADA         SUBSTANCIAL                          0
-## 6:                PRIVADA         SUBSTANCIAL                          0
-##                     fator_nome            fator_aspecto  fator_condicionante
-## 1:       APLICAÇÃO DE COMANDOS DESEMPENHO DO SER HUMANO OPERAÇÃO DA AERONAVE
-## 2:     JULGAMENTO DE PILOTAGEM DESEMPENHO DO SER HUMANO OPERAÇÃO DA AERONAVE
-## 3:                   PERCEPÇÃO      ASPECTO PSICOLÓGICO           INDIVIDUAL
-## 4:         PLANEJAMENTO DE VOO DESEMPENHO DO SER HUMANO OPERAÇÃO DA AERONAVE
-## 5: POUCA EXPERIÊNCIA DO PILOTO DESEMPENHO DO SER HUMANO OPERAÇÃO DA AERONAVE
-## 6:          PROCESSO DECISÓRIO      ASPECTO PSICOLÓGICO           INDIVIDUAL
-##           fator_area recomendacao_numero recomendacao_dia_assinatura
-## 1: FATOR OPERACIONAL            095/2011                  2011-07-21
-## 2: FATOR OPERACIONAL            095/2011                  2011-07-21
-## 3:      FATOR HUMANO            095/2011                  2011-07-21
-## 4: FATOR OPERACIONAL            095/2011                  2011-07-21
-## 5: FATOR OPERACIONAL            095/2011                  2011-07-21
-## 6:      FATOR HUMANO            095/2011                  2011-07-21
-##    recomendacao_dia_encaminhamento recomendacao_dia_feedback
-## 1:                      2011-08-01                2015-12-21
-## 2:                      2011-08-01                2015-12-21
-## 3:                      2011-08-01                2015-12-21
-## 4:                      2011-08-01                2015-12-21
-## 5:                      2011-08-01                2015-12-21
-## 6:                      2011-08-01                2015-12-21
-##                                                                                                                                                                                                                                  recomendacao_conteudo
-## 1: Revisar os requisitos de experiência recente para a revalidação de habilitação de aviões classe monomotores terrestres, visando assegurar-se de que são adequados para pilotos com baixo número de horas de voo durante dois ou mais anos seguidos.
-## 2: Revisar os requisitos de experiência recente para a revalidação de habilitação de aviões classe monomotores terrestres, visando assegurar-se de que são adequados para pilotos com baixo número de horas de voo durante dois ou mais anos seguidos.
-## 3: Revisar os requisitos de experiência recente para a revalidação de habilitação de aviões classe monomotores terrestres, visando assegurar-se de que são adequados para pilotos com baixo número de horas de voo durante dois ou mais anos seguidos.
-## 4: Revisar os requisitos de experiência recente para a revalidação de habilitação de aviões classe monomotores terrestres, visando assegurar-se de que são adequados para pilotos com baixo número de horas de voo durante dois ou mais anos seguidos.
-## 5: Revisar os requisitos de experiência recente para a revalidação de habilitação de aviões classe monomotores terrestres, visando assegurar-se de que são adequados para pilotos com baixo número de horas de voo durante dois ou mais anos seguidos.
-## 6: Revisar os requisitos de experiência recente para a revalidação de habilitação de aviões classe monomotores terrestres, visando assegurar-se de que são adequados para pilotos com baixo número de horas de voo durante dois ou mais anos seguidos.
-##    recomendacao_status recomendacao_destinatario_sigla
-## 1:        NÃO CUMPRIDA                            ANAC
-## 2:        NÃO CUMPRIDA                            ANAC
-## 3:        NÃO CUMPRIDA                            ANAC
-## 4:        NÃO CUMPRIDA                            ANAC
-## 5:        NÃO CUMPRIDA                            ANAC
-## 6:        NÃO CUMPRIDA                            ANAC
-##            recomendacao_destinatario
-## 1: AGÊNCIA NACIONAL DE AVIAÇÃO CIVIL
-## 2: AGÊNCIA NACIONAL DE AVIAÇÃO CIVIL
-## 3: AGÊNCIA NACIONAL DE AVIAÇÃO CIVIL
-## 4: AGÊNCIA NACIONAL DE AVIAÇÃO CIVIL
-## 5: AGÊNCIA NACIONAL DE AVIAÇÃO CIVIL
-## 6: AGÊNCIA NACIONAL DE AVIAÇÃO CIVIL</code></pre>
-<p>E deu certo! <em>Wheeew.</em> Agora que finalmente temos uma base com todos os dados agregados, podemos brincar um pouco com ela! :)</p>
+## 1:                      NULL                   0                          1
+## 2:                      NULL                   0                          1
+## 3:                      NULL                   0                          1
+## 4:                2019-10-28                   0                          1
+## 5:                2019-10-28                   0                          1
+## 6:                2019-10-28                   0                          1
+##    ocorrencia_saida_pista
+## 1:                    NÃO
+## 2:                    NÃO
+## 3:                    NÃO
+## 4:                    NÃO
+## 5:                    NÃO
+## 6:                    NÃO</code></pre>
+<p>E sucesso! <em>Wheeeew.</em> Agora que temos uma tabela com todas as informações que precisamos, podemos criar algumas visões para tirar alguns insights ou análises interessantes sobre :)</p>
 </div>
+</div>
+</div>
+<div id="análises" class="section level1">
+<h1>Análises</h1>
+<div id="número-de-ocorrências" class="section level2">
+<h2>Número de Ocorrências</h2>
 </div>
 </div>
 

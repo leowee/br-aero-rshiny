@@ -54,13 +54,13 @@ Segue uma breve descrição do que está no site:
 
 ## Importação dos Dados
 
-Bom, iniciamos o programa importando as informações do portal da CENIPA (Centro de Investigação e Prevenção de Acidentes Aeronáuticos) encontrados no link mencionados na Introdução.
+Bom, iniciei o programa importando as informações do portal da CENIPA (Centro de Investigação e Prevenção de Acidentes Aeronáuticos) encontrados no link mencionados na Introdução.
 
 Note que se importarmos o programa sem especificar o encoding como "UTF-8", então caracteres especiais do Português Brasil serão lidos incorretamente. e.g. "ã", "é", "Ç", etc.
 
 <!-- Importa tabelas do portal de dados abertos do Governo Federal -->
 <!-- https://dados.gov.br/dataset/ocorrencias-aeronauticas-da-aviacao-civil-brasileira -->
-```{r Importando dados da CENIPA}
+```{r Importando dados da CENIPA, echo=FALSE}
 # Tabela Central - Ocorrência
 ocorrencia <- data.table::fread(
   "http://sistema.cenipa.aer.mil.br/cenipa/media/opendata/ocorrencia.csv",
@@ -97,12 +97,12 @@ recomendacao <- data.table::fread(
 
 ### Explicação
 
-Normalmente, essa seria um bom momento de dar uma olhada em algumas colunas e vermos o que podemos fazer com elas. No entanto, lendo as informações no site de dados do Governo Federal, notamos que apesar de termos 5 tabelas diferentes, há uma tabela central que possui informações adicionais distribuídas nas outras 4, assim como na imagem a seguir:
+Normalmente, essa seria um bom momento de dar uma olhada em algumas colunas e ver o que podemos fazer com elas. No entanto, lendo as informações no site de dados do Governo Federal, notei que apesar de termos 5 tabelas diferentes, há uma tabela "central" que possui informações adicionais distribuídas nas outras 4, assim como na imagem a seguir:
 
 ![Relacionamento de dados das tabelas que usaremos](http://sistema.cenipa.aer.mil.br/cenipa/media/opendata/modelo_dados.png "Deve ser simples, certo?")
-Como as tabelas são bem pequenas com menos 10 mil linhas e 30 colunas, cruzá-las e trazer todas as informações em um único dataset poderá facilitar o tratamento de dados mais para frente. Talvez fique um pouco mais difícil de ter uma panorama geral só batendo o olho, mas dado o número colunas parece ser algo tolerável.
+Como as tabelas são bem pequenas, com menos 10 mil linhas e 30 colunas, cruzá-las e trazer todas as informações em um único dataset poderá facilitar o tratamento de dados mais para frente. Talvez fique um pouco mais difícil de ter uma panorama geral só batendo o olho, mas dado o número colunas parece ser algo tolerável.
 
-Como estou usando o pacote data.table, vamos utilizá-lo para cruzar as informações baseado na chave seguindo a imagem do relacionamento de dados das tabelas acima. Extraindo as informações, seria algum assim:
+Como estou usando o pacote data.table, utilizarei-o para cruzar as informações baseado na chave seguindo a imagem do relacionamento de dados das tabelas acima. Extraindo as informações da imagem acima, seria algo assim:
 
 ```{r Criando tabela de exemplo 1, echo=FALSE}
 nome_tabelas_complementares = list("OCORRENCIA_TIPO", "AERONAVE", "FATOR_CONTRIBUINTE", "RECOMENDACAO")
@@ -113,17 +113,19 @@ reactable::reactable(data.table::data.table(nome_tabelas_complementares, chave_t
 
 ### Cruzamento
 
-Primeira coisa, vamos dar um head para ter um panorama geral da tabela central, *ocorrencia* - especialmente das chaves. Nunca se sabe se algo deu errado.
+#### Achados sobre a chave
+
+Primeira coisa, dei um head para ter um panorama geral da tabela central, *ocorrencia* - especialmente das chaves. Nunca se sabe se algo deu errado.
 
 ```{r Head da chave da base Ocorrencia antes do cruzamento}
 head(ocorrencia[, c("codigo_ocorrencia", "codigo_ocorrencia1", "codigo_ocorrencia2", "codigo_ocorrencia3", "codigo_ocorrencia4")])
 ```
 
-Opa! Olhando o header, parece que ocorreu algo de muito estranho. As 5 primeiras linhas das 5 chaves possuem o valor idêntico!
+Opa! Olhando o header, parece que ocorreu algo peculiar. As 5 primeiras linhas das 5 chaves possuem o valor idêntico!
 
-Note que isso não significa que todas as linhas serão iguais. Porém, há uma leve suspeita para sabermos se isso é muito mais que uma mera coincidência.
+Note que isso não significa que todas as linhas serão iguais. Porém, há uma leve suspeita para saber se isso é muito mais que uma mera coincidência, ou seja, que realmente esteja assim na tabela inteira.
 
-Para checarmos no R se as colunas possuem valores, iguais podemos usar a função *identical* para saber se os elementos são iguais.
+Para checarmos no R se as colunas possuem valores iguais, podemos usar a função *identical* para saber se os elementos são iguais.
 
 ```{r Checagem 1 - Colunas das chaves são idênticas}
 identical(
@@ -135,11 +137,13 @@ identical(
 )
 ```
 
-E olha só! As colunas são de fato idênticas! Pode ser que um dia essas colunas sejam diferentes por algum motivo, mas no momento de nossa análise elas são idênticas.
+E olha só! As colunas são de fato idênticas! Pode ser que um dia essas colunas sejam diferentes por algum motivo no site, mas no momento de nossa análise elas são idênticas.
 
-Isso não mudará muita coisa no nosso cruzamento, mas isso significa que podemos descartar alguns dados mais para frente, pós o cruzamento.
+Isso não mudará muita coisa no nosso cruzamento, mas isso significa que podemos descartar alguns dados mais para frente após o cruzamento.
 
-Voltando ao que interessa, vamos para o cruzamento - fazendo 4 left joins seguidos:
+#### Cruzando as tabelas
+
+Voltando ao que interessa, vamos para o cruzamento. Tentarei fazer 4 left joins seguidos trazendo as informações das 4 tabelas complementares para a tabela central, *ocorrencia*:
 
 ```{r}
 cruzamento1 <- ocorrencia[ocorrencia_tipo, on = "codigo_ocorrencia1"] # Left Join 1
@@ -148,10 +152,12 @@ cruzamento3 <- cruzamento2[fator_contribuinte, on = "codigo_ocorrencia3"] # Left
 # tabela <- cruzamento3[recomendacao, on = "codigo_ocorrencia4"] # Left Join 4
 ```
 
-Rodando o código acima sem a última linha estar comentada, obteremos um erro vindo do último cruzamento, um left join entre *ocorrencia* e *recomendacao*:
+Rodando o código acima sem a última linha estar comentada, obtive um erro vindo do último cruzamento, um left join entre *ocorrencia* e *recomendacao*:
 
 > Error in vecseq(f__, len__, if (allow.cartesian || notjoin || !anyDuplicated(f__, : 
 Join results in 11387 rows; more than 6687 = nrow(x)+nrow(i). Check for duplicate key values in i each of which join to the same group in x over and over again. If that's ok, try by=.EACHI to run j for each group to avoid the large allocation. If you are sure you wish to proceed, rerun with allow.cartesian=TRUE. Otherwise, please search for this error message in the FAQ, Wiki, Stack Overflow and data.table issue tracker for advice.
+
+#### Será que são chaves mesmo?
 
 Aparentemente as chaves de alguma das duas tabelas não são únicas. Vamos dar uma olhadinha na frequências das chaves (código de ocorrência - *codigo_ocorrencia*) das tabelas:
 
@@ -175,7 +181,11 @@ head(fator_contribuinte[, .(n = .N), by = codigo_ocorrencia3][n > 1][order(-n)])
 head(recomendacao[, .(n = .N), by = codigo_ocorrencia4][n > 1][order(-n)])
 ```
 
-Bom, dado que não há uma chave comum entre as tabelas que não estejam duplicadas, não é possível fazer um join direto entre elas. No entanto, como nossas tabelas não possuem nenhum campo de valor que poderíamos agregar (exceto 3 colunas que contém o nome "total", mas que podem ser recalculadas usando as variáveis de origem), nós conseguimos fazer algo ainda que nos ajude a colocar tudo numa tabela só, usando cruzamento cartesiano (*cartesian join*).
+Bom, dado que não há uma chave comum entre as tabelas que não estejam duplicadas, não é possível fazer um join simples entre elas como eu gostaria de ter feito. No entanto, como as tabelas não possuem nenhum campo de valor que poderíamos agregar (exceto 3 colunas que contém o nome "total" de frequência, mas que podem ser recalculadas usando as variáveis de origem), é possível fazer algo ainda que nos ajude a colocar tudo numa tabela só, usando cruzamento cartesiano (*cartesian join*).
+
+#### Cruzamento Cartesiano
+
+Fazer isso fará com que a tabela após os cruzamentos deixe de ter uma única chave, mas dado que irei sumarizar ela posteriormente com apenas uma seleção das colunas, deve dar tudo certo. 
 
 Então, para fazer o cruzamento cartesiano no data.table basta especificar o argumento no final. Vamos ver se agora dará certo...
 
@@ -184,12 +194,89 @@ cruzamento1 <- ocorrencia_tipo[ocorrencia, on = "codigo_ocorrencia1", allow.cart
 cruzamento2 <- aeronave[cruzamento1, on = "codigo_ocorrencia2", allow.cartesian = TRUE] # Left Join 2
 cruzamento3 <- fator_contribuinte[cruzamento2, on = "codigo_ocorrencia3", allow.cartesian = TRUE] # Left Join 3
 tabela <- recomendacao[cruzamento3, on = "codigo_ocorrencia4", allow.cartesian = TRUE] # Left Join 4
+
+head(tabela)
 ```
 
-E sucesso! *Wheeeew.* Agora que temos uma tabela com todas as informações que precisamos, podemos criar algumas visões para tirar alguns insights ou análises interessantes sobre :)
+E sucesso! 
+
+*Wheeeew.* 
+
+Agora que tenho uma tabela com todas as informações que preciso, posso criar algumas visões para tirar alguns insights ou análises interessantes sobre. Claro, após tratarmos alguns pontos dela :)
+
+## Tratamento dos Dados
+
+### Reordenação das Colunas
+
+Para finalizar, vou reordenar as colunas para ficar em uma ordem mais lógica, seguindo a ordem das bases que foram cruzadas:
+
+```{r}
+colunas0 <- names(ocorrencia)
+colunas1 <- names(ocorrencia_tipo)[2:length(names(ocorrencia_tipo))] # Eliminando a coluna de codigo_ocorrencia1
+colunas2 <- names(aeronave)[2:length(names(aeronave))] # Eliminando a coluna de codigo_ocorrencia2
+colunas3 <- names(fator_contribuinte)[2:length(names(fator_contribuinte))] # Eliminando a coluna de codigo_ocorrencia3
+colunas4 <- names(recomendacao)[2:length(names(recomendacao))] # Eliminando a coluna de codigo_ocorrencia4
+
+#
+ordem_colunas <- c(colunas0, colunas1, colunas2, colunas3, colunas4)
+
+#
+data.table::setcolorder(tabela, ordem_colunas)
+```
+
+
+### Conversão das Colunas
+
+Algumas colunas...
+
+
+#### Texto para datas
+
+Datas...
+
+```{r}
+names(tabela)[grepl("*dia", names(tabela))]
+```
+Texto...
+
+```{r}
+de_texto_para_data <- names(tabela)[grepl("*dia", names(tabela))]
+str(tabela[, ..de_texto_para_data])
+```
+Texto...
+
+Converte...
+
+```{r}
+# Converte somente a coluna ocorrencia dia por ter um formato diferente (DD/MM/YYYY) 
+tabela[, ocorrencia_dia := as.IDate(ocorrencia_dia, "%d/%m/%Y")]
+
+# Converte colunas que possuem o formato (YYYY-MM-DD) 
+tabela[, `:=`(
+  divulgacao_dia_publicacao = as.IDate(divulgacao_dia_publicacao, "%Y-%m-%d"),
+  recomendacao_dia_assinatura = as.IDate(recomendacao_dia_assinatura, "%Y-%m-%d"),
+  recomendacao_dia_encaminhamento = as.IDate(recomendacao_dia_encaminhamento, "%Y-%m-%d"),
+  recomendacao_dia_feedback = as.IDate(recomendacao_dia_feedback, "%Y-%m-%d")
+)]
+```
+
+
+#### Texto para numérico/inteiro
+
+
 
 # Análises
 
-## Número de Ocorrências
+Em construção, maybe
 
+## Número de ocorrências pelo tempo
+
+
+```{r}
+# Seleciona as colunas relevantes, e dá um distinct para evitar observações duplicadas
+ocorrencias_tempo_prep <- unique(tabela[, .(ocorrencia_dia, codigo_ocorrencia)])
+
+# 
+ocorrencias_tempo <- ocorrencias_tempo_prep[, .(N = .N), keyby = c("ocorrencia_dia")]
+```
 
