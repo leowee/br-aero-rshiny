@@ -208,47 +208,103 @@ Agora que tenho uma tabela com todas as informações que preciso, posso criar a
 
 ### Reordenação das Colunas
 
-Para finalizar, vou reordenar as colunas para ficar em uma ordem mais lógica, seguindo a ordem das bases que foram cruzadas:
+Para começar os tratamentos dos dados, reordenarei as colunas para ficar na ordem das bases que foram cruzadas, ou seja, na seguinte ordem:
+
+1. ocorrencia;
+2. ocorrencia_tipo;
+3. aeronave;
+4. fator_contribuinte;
+5. recomendacao;
+
+Lembrando que como as colunas *codigo_ocorrencia1*, *codigo_ocorrencia2*, *codigo_ocorrencia3*, *codigo_ocorrencia4* já existiam na tabela "central", *ocorrencia*, irei removê-las para evitar algum tipo de mal entendido no vetor.
 
 ```{r}
+# Extrai o nome (e a ordem) das colunas pré cruzamento
 colunas0 <- names(ocorrencia)
 colunas1 <- names(ocorrencia_tipo)[2:length(names(ocorrencia_tipo))] # Eliminando a coluna de codigo_ocorrencia1
 colunas2 <- names(aeronave)[2:length(names(aeronave))] # Eliminando a coluna de codigo_ocorrencia2
 colunas3 <- names(fator_contribuinte)[2:length(names(fator_contribuinte))] # Eliminando a coluna de codigo_ocorrencia3
 colunas4 <- names(recomendacao)[2:length(names(recomendacao))] # Eliminando a coluna de codigo_ocorrencia4
 
-#
+# Concatena os nomes das colunas
 ordem_colunas <- c(colunas0, colunas1, colunas2, colunas3, colunas4)
 
-#
+# Atualiza a ordem na tabela por referência
 data.table::setcolorder(tabela, ordem_colunas)
 ```
 
 
 ### Conversão das Colunas
 
-Algumas colunas...
+Após a ordenação, posso finalmente começar a dar uma olhada na tabela "analítica" (pós-cruzamento das tabelas) carinhosamente chamada de *tabela*. Vamos dar uma olhadinha:
+
+```{r}
+str(tabela)
+```
+
+Hmm...
+
+Analisando com calma a tabela, podemos anotar alguns pontos estranhos:
+
+* De cara, dá para ver algumas colunas que não eram para ser texto: *aeronave_ano_fabricacao*, *ocorrencia_latitude*, *ocorrencia_dia*, etc;
+  - Não appenas isso: dentre essas colunas, algumas precisam ser convertidas para número enquanto outras para data;
+  
+* Além disso, nossa tabela possui alguns valores estranhos como "***", "NULL" (literalmente como texto, não como valor booleano), que irei inferir que são __Missing__ já que não possuo metadados sobre o dataset.
+
+Como os valores missing influenciará na conversão dos dados de texto para outros tipos, então começarei tratando eles primeiro.
+
+
+#### Corrigindo os valores missing
+
+Para corrigir os valores missing das colunas que são do tipo Texto, primeiro:
+
+* Filtramos todas as colunas que são texto;
+
+* E depois, caso algum elemento se encaixe em alguns dos valores estranhos que vimos, transformamos em missing (NA). e.g. "***", "NULL", etc.
+
+Então, temos:
+
+```{r}
+# Seleciona as colunas que são do tipo character (texto), e guarda na colunas_texto
+indices_colunas_texto <- which(unlist(lapply(tabela, is.character)))
+colunas_texto <- names(tabela)[indices_colunas_texto]
+
+# Para cada coluna do colunas_texto, troca o valor estranho para missing (NA) usando ifelse
+tabela[, (colunas_texto) := lapply(.SD, function(x) ifelse(
+  x == "***" 
+  | x == "****" 
+  | x == "*****"
+  | x == "******"
+  | x == "*******"
+  | x == "********"
+  | x == "*********"
+  | x == "****_***"
+  | x == "****_****"
+  | x == "NULL" 
+  | x == "", 
+  NA, x)), .SDcols = colunas_texto]
+```
 
 
 #### Texto para datas
 
-Datas...
+As colunas que deveriam ser do tipo Data contém "dia" no nome:
 
 ```{r}
 names(tabela)[grepl("*dia", names(tabela))]
 ```
-Texto...
 
 ```{r}
 de_texto_para_data <- names(tabela)[grepl("*dia", names(tabela))]
 str(tabela[, ..de_texto_para_data])
 ```
-Texto...
 
-Converte...
+Logo, para converter, basta aplicarmos o as.IDate - que é essencialmente o Date normal do R, mas compatível com o data.table.
+
+Só um ponto de atenção: a variável *ocorrencia_dia* não só está como texto quanto também está em um formato de data diferente das demais. Tirando isso, as coisas estão dando tudo certo!
 
 ```{r}
-# Converte somente a coluna ocorrencia dia por ter um formato diferente (DD/MM/YYYY) 
+# Converte somente a coluna ocorrencia_dia por ter um formato diferente (DD/MM/YYYY) 
 tabela[, ocorrencia_dia := as.IDate(ocorrencia_dia, "%d/%m/%Y")]
 
 # Converte colunas que possuem o formato (YYYY-MM-DD) 
@@ -258,19 +314,115 @@ tabela[, `:=`(
   recomendacao_dia_encaminhamento = as.IDate(recomendacao_dia_encaminhamento, "%Y-%m-%d"),
   recomendacao_dia_feedback = as.IDate(recomendacao_dia_feedback, "%Y-%m-%d")
 )]
+
+# Converte a coluna ocorrencia_hora para o formato ITime 
+tabela[, ocorrencia_hora := as.ITime(ocorrencia_hora, "%d/%m/%Y")]
 ```
 
 
 #### Texto para numérico/inteiro
 
+Agora para o caso de ver qual variável deveria ser numérica, não tem jeito. Como o número é pequeno, dá para darmos uma olhada olhando no "str(tabela)" acima.
 
+* ocorrencia_latitude;
+* ocorrencia_longitude;
+* aeronave_assentos;
+* aeronave_ano_fabricacao;
+
+Sabendo quais são as colunas, basta convertê-las:
+
+```{r}
+colunas_texto_para_numero <- c(
+"ocorrencia_latitude",
+"ocorrencia_longitude",
+"aeronave_assentos",
+"aeronave_ano_fabricacao"
+)
+
+# tabela[, (colunas_texto_para_numero) := lapply(.SD, function(x) as.numeric(x)), .SDcols = colunas_texto_para_numero]
+```
+
+Ou pelo menos deveria ser! Tentando converter as 4 colunas de uma vez retorna erro em 2 colunas - que estão aplicando NA por *coercion*, ou seja, por não saber converter. Olhando mais afundo, notamos que o problema ocorre  nas colunas de latitude e longitude. Portanto, vamos converter as outras duas que deram certo, *aeronave_assentos* e *aeronave_assentos*, e ver mais a fundo o caso do da latitude e longitude.
+
+```{r}
+tabela[, `:=`(
+  aeronave_assentos = as.numeric(aeronave_assentos),
+  aeronave_ano_fabricacao = as.numeric(aeronave_ano_fabricacao)
+)]
+```
+
+
+#### Latitude e Longitude
+
+Texto
+
+<!-- Check that the first number in your latitude coordinate is between -90 and 90. -->
+<!-- Check that the first number in your longitude coordinate is between -180 and 180. -->
+
+
+##### Astericos
+```{r}
+# Observações que ainda possuem asteriscos
+unique(tabela$ocorrencia_latitude)[grepl("\\*", unique(tabela$ocorrencia_latitude))]
+```
+```{r}
+# Observações que ainda possuem asteriscos
+unique(tabela$ocorrencia_longitude)[grepl("\\*", unique(tabela$ocorrencia_longitude))]
+```
+
+##### Outros casos peculiares
+```{r}
+head(sort(unique(tabela[, ocorrencia_latitude])), 135)
+```
+
+```{r}
+head(sort(unique(tabela[, ocorrencia_longitude])), 40)
+```
+Texto...
+
+Texto 2...
+
+```{r}
+#tabela_ = data.table::copy(tabela)
+
+### Caso 1 - Espaço (Lat e Log)
+tabela[, ocorrencia_latitude := as.numeric(gsub(" ", "", ocorrencia_latitude))]
+tabela[, ocorrencia_longitude := as.numeric(gsub(" ", "", ocorrencia_longitude))]
+
+### Caso 2 - Vírgula (Só Lat)
+tabela[, ocorrencia_latitude := as.numeric(gsub(",", ".", ocorrencia_latitude))]
+
+### Caso 3 - Duplo negativo (Só Log)
+tabela[, ocorrencia_longitude := as.numeric(gsub("--", "-", ocorrencia_longitude))]
+
+### Caso 4 - Número todo cagado (Lat e Log)
+
+
+### Caso Normal
+# tabela_[, `:=`(
+  # ocorrencia_latitude = as.numeric(ocorrencia_latitude)
+  # ocorrencia_longitude = as.numeric(ocorrencia_longitude),
+# )]
+```
+
+
+Após tratamentos:
+
+```{r}
+head(sort(unique(tabela[, ocorrencia_latitude])), 135)
+```
+
+```{r}
+head(sort(unique(tabela[, ocorrencia_longitude])), 40)
+```
+
+Após tratamentosd
 
 # Análises
 
 Em construção, maybe
 
 ## Número de ocorrências pelo tempo
-
 
 ```{r}
 # Seleciona as colunas relevantes, e dá um distinct para evitar observações duplicadas
