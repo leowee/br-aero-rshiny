@@ -9,11 +9,12 @@ output:
 
 ```{r rmarkdown_setup, include=FALSE}
 ## Global options
-knitr::opts_chunk$set(cache = TRUE)
+knitr::opts_chunk$set(cache = FALSE)
 
 # Pacotes
 library(data.table) # Framework de manipulação dos dados
 library(echarts4r) # Framework de visualização de séries temporais
+library(reactable) # Framework de tabelas HTML em React
 ```
 
 # Introdução
@@ -370,6 +371,16 @@ unique(tabela$ocorrencia_latitude)[grepl("\\*", unique(tabela$ocorrencia_latitud
 unique(tabela$ocorrencia_longitude)[grepl("\\*", unique(tabela$ocorrencia_longitude))]
 ```
 
+##### Coordenadas em outro sistema (como DMS - Decimal degrees, minutes and seconds)
+
+```{r}
+tabela[ocorrencia_latitude %like% "”", ocorrencia_latitude]
+```
+```{r}
+tabela[ocorrencia_longitude %like% "”", ocorrencia_longitude]
+```
+
+
 ##### Outros casos peculiares
 ```{r}
 head(sort(unique(tabela[, ocorrencia_latitude])), 135)
@@ -378,33 +389,98 @@ head(sort(unique(tabela[, ocorrencia_latitude])), 135)
 ```{r}
 head(sort(unique(tabela[, ocorrencia_longitude])), 40)
 ```
+```{r}
+tail(sort(unique(tabela[, ocorrencia_longitude])), 55)
+```
+
 Texto...
 
 Texto 2...
 
 ```{r}
-#tabela_ = data.table::copy(tabela)
+### Caso 1 - Espaço, e.g. "- 22.75944"
+tabela[, ocorrencia_latitude := gsub(" ", "", ocorrencia_latitude)]
+tabela[, ocorrencia_longitude := gsub(" ", "", ocorrencia_longitude)]
 
-### Caso 1 - Espaço (Lat e Log)
-tabela[, ocorrencia_latitude := as.numeric(gsub(" ", "", ocorrencia_latitude))]
-tabela[, ocorrencia_longitude := as.numeric(gsub(" ", "", ocorrencia_longitude))]
+### Caso 2 - Vírgula, e.g. "-0,889722"
+tabela[, ocorrencia_latitude := gsub(",", ".", ocorrencia_latitude)]
+tabela[, ocorrencia_longitude := gsub(",", ".", ocorrencia_longitude)]
 
-### Caso 2 - Vírgula (Só Lat)
-tabela[, ocorrencia_latitude := as.numeric(gsub(",", ".", ocorrencia_latitude))]
+### Caso 3 - Duplo negativo, e.g. "--49.0324242"
+tabela[, ocorrencia_latitude := gsub("--", "-", ocorrencia_latitude)]
+tabela[, ocorrencia_longitude := gsub("--", "-", ocorrencia_longitude)]
 
-### Caso 3 - Duplo negativo (Só Log)
-tabela[, ocorrencia_longitude := as.numeric(gsub("--", "-", ocorrencia_longitude))]
+### Caso 4 - Com a palavra Latitude/Longitude na frente, e.g. "Longitude:-47."
+tabela[ocorrencia_latitude %like% "Latitude", ocorrencia_latitude := gsub("Latitude:", "", ocorrencia_latitude)]
+tabela[ocorrencia_longitude %like% "Longitude", ocorrencia_longitude := gsub("Longitude:", "", ocorrencia_longitude)]
 
-### Caso 4 - Número todo cagado (Lat e Log)
+### Caso 5 - Coordenada em DMS - Decimal degrees, minutes and seconds
+tabela[ocorrencia_latitude == "15°39’00”S", ocorrencia_latitude := "-15.650000"]
+tabela[ocorrencia_longitude == "056°07’03”W", ocorrencia_longitude := "-56.117500"]
 
+### Caso 6 - Asteriscos na frente ou atrás do número (só Lat)
+tabela[ocorrencia_latitude == "***-22.98575784", ocorrencia_latitude := "-22.98575784"]
+tabela[ocorrencia_latitude == "-14.71083***", ocorrencia_latitude := "-14.71083"]
 
-### Caso Normal
-# tabela_[, `:=`(
-  # ocorrencia_latitude = as.numeric(ocorrencia_latitude)
-  # ocorrencia_longitude = as.numeric(ocorrencia_longitude),
-# )]
+### Caso 7 - Possui/termina com S, N, W, ou E, mas não está formatado em coordenadas DMS como no Caso 5
+tabela[, ocorrencia_latitude := gsub("S", "", ocorrencia_latitude)]
+tabela[, ocorrencia_latitude := gsub("N", "", ocorrencia_latitude)]
+tabela[, ocorrencia_longitude := gsub("W", "", ocorrencia_longitude)]
+tabela[, ocorrencia_longitude := gsub("E", "", ocorrencia_longitude)]
+
+### Caso 8 - Possui/termina com o símbolo de Grau ("º"/"°")
+tabela[, ocorrencia_latitude := gsub("°", "", ocorrencia_latitude)]
+tabela[, ocorrencia_longitude := gsub("°", "", ocorrencia_longitude)]
+
+tabela_ <- data.table::copy(tabela)
+
+### Caso 9 - Número cheio de separadores usando ponto ("."). (Lat e Log)
+# Cria flag marcando casos que possíveis não estão todos corretos
+tabela[, flag_lat_long := fifelse(
+    lengths(regmatches(ocorrencia_latitude, gregexpr("\\.", ocorrencia_latitude))) > 1
+    | lengths(regmatches(ocorrencia_longitude, gregexpr("\\.", ocorrencia_longitude))) > 1,
+    FALSE,
+    TRUE
+  )
+]
+
+# Latitude
+tabela[
+  lengths(regmatches(ocorrencia_latitude, gregexpr("\\.", ocorrencia_latitude))) > 1, 
+  ocorrencia_latitude := fifelse(
+    as.numeric(gsub("\\.", "", ocorrencia_latitude)) > 0, 
+    sub("(.{2})(.*)", "\\1.\\2", gsub("\\.", "", ocorrencia_latitude)), 
+    sub("(.{3})(.*)", "\\1.\\2", gsub("\\.", "", ocorrencia_latitude))
+  )
+]
+
+# Longitude
+tabela[
+  lengths(regmatches(ocorrencia_longitude, gregexpr("\\.", ocorrencia_longitude))) > 1, 
+  ocorrencia_longitude := fifelse(
+    as.numeric(gsub("\\.", "", ocorrencia_longitude)) > 0, 
+    sub("(.{2})(.*)", "\\1.\\2", gsub("\\.", "", ocorrencia_longitude)), 
+    sub("(.{3})(.*)", "\\1.\\2", gsub("\\.", "", ocorrencia_longitude))
+  )
+]
+
+### Após tratamentos, FINALMENTE converte as colunas para numérico
+tabela[, `:=`(
+  ocorrencia_latitude = as.numeric(ocorrencia_latitude),
+  ocorrencia_longitude = as.numeric(ocorrencia_longitude)
+)]
+
+### Caso 10 - 44993 e 50794 não possuem longitude
+# Como a ocorrencia 44993 foi na cidade do Rio de Janeiro, aproxima usando as coordenadas
+# do Aeroporto Doméstico Santos Dumont: -22.90825417333246, -43.16789880589976
+tabela[codigo_ocorrencia == 44993, ocorrencia_longitude := -43.16789880589976]
+
+# Como a ocorrencia 50794 foi na cidade de Turmalina, MG, aproxima usando as coordenadas
+# do ponto zero da cidade: -17.285824901708047, -42.731887838264434
+tabela[codigo_ocorrencia == 50794, ocorrencia_longitude := -42.731887838264434]
 ```
 
+***
 
 Após tratamentos:
 
@@ -416,19 +492,56 @@ head(sort(unique(tabela[, ocorrencia_latitude])), 135)
 head(sort(unique(tabela[, ocorrencia_longitude])), 40)
 ```
 
-Após tratamentosd
+```{r}
+tail(sort(unique(tabela[, ocorrencia_longitude])), 40)
+```
+
+Após tratamentos...
+
+***
 
 # Análises
 
 Em construção, maybe
 
-## Número de ocorrências pelo tempo
+## Número de ocorrências pelo tempo {.tabset .tabset-pills}
 
+### Calendário
 ```{r}
 # Seleciona as colunas relevantes, e dá um distinct para evitar observações duplicadas
 ocorrencias_tempo_prep <- unique(tabela[, .(ocorrencia_dia, codigo_ocorrencia)])
 
 # 
-ocorrencias_tempo <- ocorrencias_tempo_prep[, .(N = .N), keyby = c("ocorrencia_dia")]
+ocorrencias_tempo <- ocorrencias_tempo_prep[, .(N = .N, ocorrencia_ano = as.character(year(ocorrencia_dia))), keyby = c("ocorrencia_dia")]
+
+ocorrencias_tempo |> 
+  e_charts(ocorrencia_dia)|> 
+  e_calendar(
+    range = c(min(ocorrencias_tempo$ocorrencia_ano), max(ocorrencias_tempo$ocorrencia_ano)),
+    # orient = "vertical",
+    # width = 1,
+    left = "2.5%",
+    #top = "15%",
+    dayLabel = list(show = F),
+    yearLabel = list(show = F)
+    ) |> 
+  e_heatmap(N, coord_system = "calendar") |> 
+  e_visual_map(max = max(ocorrencias_tempo$N)) |>  
+  e_theme("essos") |>  
+  e_title("Calendar", "Heatmap")
 ```
 
+### Ano a Ano
+```{r}
+ocorrencias_tempo[, .(Ocorrências = sum(N)), keyby = ocorrencia_ano] |>  
+  e_charts(ocorrencia_ano) |>  
+  e_line(Ocorrências) |>  
+  e_theme("chalk") |>  
+  e_title("Número de Ocorrências - Ano a ano") |> 
+  e_tooltip(trigger = "axis")  
+```
+
+### Tabela
+```{r}
+reactable::reactable(ocorrencias_tempo[, .(N = sum(N)), keyby = ocorrencia_ano])
+```
