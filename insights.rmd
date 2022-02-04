@@ -632,6 +632,41 @@ ocorrencias_tempo_dia |>
 
 ### {-}
 
+### Ocorrências pelo tipo {.tabset .tabset-pills}
+
+```{r}
+ocorrencias_tipo_plot <- tabela[, .N, keyby = c("ocorrencia_tipo", "ocorrencia_classificacao")]
+```
+
+
+#### Top 10 - Ocorrências por Tipo
+```{r}
+tail(ocorrencias_tipo_plot[order(N)], 10) |>
+  group_by(ocorrencia_classificacao) |>
+  e_charts(ocorrencia_tipo) |>
+  e_title("Top 10 - Ocorrências por Tipo", left = "center") |>
+  e_theme("chalk") |>  
+  e_x_axis(axisLabel = list(fontSize = 7)) |>  
+  e_legend(bottom = 0) |>  
+  e_bar(N, emphasis = list(focus = "self")) |>
+  e_tooltip() |>
+  e_flip_coords()
+```
+
+#### Top 10 - Ocorrências por Tipo - Incidente Grave
+```{r}
+tail(ocorrencias_tipo_plot[ocorrencia_classificacao == "INCIDENTE GRAVE"][order(N)], 10) |>
+  e_charts(ocorrencia_tipo) |>
+  e_title("Top 10 - Ocorrências por Tipo - Incidente Grave", left = "center") |>
+  e_x_axis(axisLabel = list(fontSize = 7)) |>  
+  e_theme("chalk") |>  
+  e_legend(bottom = 0) |>  
+  e_bar(N, colorBy = "data", emphasis = list(focus = "self")) |>
+  e_tooltip() |>
+  e_flip_coords()
+```
+
+
 ### Mapa das Ocorrências
 
 Em construção
