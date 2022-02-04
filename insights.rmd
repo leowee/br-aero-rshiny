@@ -519,55 +519,79 @@ Em construção, maybe
 
 ```{r}
 # Seleciona as colunas relevantes, e dá um distinct para evitar observações duplicadas
-ocorrencias_tempo_prep <- unique(tabela[, .(ocorrencia_dia, codigo_ocorrencia)])
+ocorrencias_tempo <- unique(tabela[, .(ocorrencia_dia, codigo_ocorrencia, ocorrencia_classificacao)])
 
-# 
-ocorrencias_tempo <- ocorrencias_tempo_prep[, .(N = .N, ocorrencia_ano = as.character(data.table::year(ocorrencia_dia))), keyby = c("ocorrencia_dia")]
-
+#
 ocorrencias_tempo[, `:=`(
+  ocorrencia_ano = as.character(data.table::year(ocorrencia_dia)),
   ocorrencia_mes = paste0(substr(ocorrencia_dia, 1, 7), "-01"),
   ocorrencia_dia_plot = as.character(ocorrencia_dia),
   ocorrencia_dia_calendario = as.IDate(substr(ocorrencia_dia, 6, 10), format="%m-%d")
 )]
-
-# [, .(N = sum(N)), by = ocorrencia_dia_alt]
-# [, .(N = sum(N)), by = ocorrencia_dia_alt]
-# [, .(N = sum(N)), keyby = ocorrencia_dia]
 ```
 
 ### Número de ocorrências pelo tempo {.tabset .tabset-pills}
 
-
-#### Ano
-```{r ano}
-ocorrencias_tempo[, .(Ocorrências = sum(N)), keyby = ocorrencia_ano] |>  
-  e_charts(ocorrencia_ano) |>  
+#### Ano e Mês
+```{r mes}
+e_ocorrencias_ano <- ocorrencias_tempo[, .(Ocorrências = .N), keyby = ocorrencia_ano] |>  
+  e_charts(ocorrencia_ano, height = 300, elementId = "e_ocorrencias_ano") |>  
   e_title("Número de Ocorrências Aeronaúticas - Ao Ano", left = "center") |> 
   e_legend(bottom = 0) |>
   e_theme("chalk") |>  
   e_line(Ocorrências, name = "Número de Ocorrências") |>  
   e_mark_line("Número de Ocorrências", data = list(type = "average")) |> 
   e_tooltip(trigger = "axis") |> 
-  e_labels()
-```
+  e_labels() |> 
+  e_datazoom(show = FALSE)
 
-#### Mês
-```{r mes}
-ocorrencias_tempo[, .(Ocorrências = sum(N)), keyby = ocorrencia_mes] |>
-  e_charts(ocorrencia_mes) |>
+e_ocorrencias_mes <- ocorrencias_tempo[, .(Ocorrências = .N), keyby = ocorrencia_mes] |>
+  e_charts(ocorrencia_mes, height = 300, elementId = "e_ocorrencias_mes") |>
   e_title("Número de Ocorrências Aeronaúticas - Ao Mês", left = "center") |>
-  e_legend(right = 0) |>
+  e_legend(show = FALSE) |>
   e_theme("chalk") |>
   e_line(Ocorrências, name = "Número de Ocorrências") |>
   e_mark_line("Número de Ocorrências", data = list(type = "average")) |>
   e_tooltip(trigger = "axis") |>
-  e_datazoom()
+  e_datazoom() |>
+  e_connect("e_ocorrencias_ano")
+
+e_arrange(e_ocorrencias_ano, e_ocorrencias_mes)
+```
+
+#### Ano e Mês - Por classificação de ocorrência
+```{r}
+e_ocorrencias_classif_ano <- ocorrencias_tempo[, .(Ocorrências = .N), keyby = c("ocorrencia_ano", "ocorrencia_classificacao")] |> 
+  group_by(ocorrencia_classificacao) |>
+  e_charts(ocorrencia_ano, height = 300, elementId = "e_ocorrencias_classif_ano") |>  
+  e_title("Número de Ocorrências Aeronaúticas - Ao Ano", left = "center") |> 
+  e_legend(bottom = 0) |>
+  e_theme("chalk") |>  
+  e_line(Ocorrências) |>  
+  e_mark_line("Número de Ocorrências", data = list(type = "average")) |> 
+  e_tooltip(trigger = "axis") |> 
+  e_labels() |> 
+  e_datazoom(show = FALSE)
+
+e_ocorrencias_classif_mes <- ocorrencias_tempo[, .(Ocorrências = .N), keyby = c("ocorrencia_mes", "ocorrencia_classificacao")] |>
+  group_by(ocorrencia_classificacao) |>
+  e_charts(ocorrencia_mes, height = 300, elementId = "e_ocorrencias_classif_mês") |>
+  e_title("Número de Ocorrências Aeronaúticas - Ao Mês", left = "center") |>
+  e_legend(show = FALSE) |>
+  e_theme("chalk") |>
+  e_line(Ocorrências) |>
+  e_mark_line("Número de Ocorrências", data = list(type = "average")) |>
+  e_tooltip(trigger = "axis") |>
+  e_datazoom() |>
+  e_connect("e_ocorrencias_classif_ano")
+
+e_arrange(e_ocorrencias_classif_ano, e_ocorrencias_classif_mes)
 ```
 
 
 #### Dia - Calendário
 ```{r dia2, R.options = list(width = 1000)}
-ocorrencias_tempo_dia <- ocorrencias_tempo[, .(N = sum(N, na.rm = T)), keyby = ocorrencia_dia_calendario]
+ocorrencias_tempo_dia <- ocorrencias_tempo[, .(N = .N), keyby = ocorrencia_dia_calendario]
 
 ano_tbl_ocorrencias <- year(
   ocorrencias_tempo_dia[!is.na(ocorrencia_dia_calendario)][1, ocorrencia_dia_calendario]
